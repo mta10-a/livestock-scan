@@ -1,0 +1,197 @@
+==============================================================
+UTS - TUGAS BESAR IPPL
+Proyek : LivestockHealth Scan
+         Deteksi Penyakit Luar/Fisik pada Hewan Ternak
+Nama   : Mutia Rahmawati
+NIM    : 11241065
+==============================================================
+
+
+1. TUJUAN UTS (INSTRUKSI DOSEN)
+--------------------------------------------------------------
+1. Mulai mengerjakan prototype tugas besar.
+2. Minimal progress 30% dihitung dari jumlah fitur.
+3. Utamakan fitur esensial.
+4. Maksimal pengerjaan sampai hari Senin pukul 23.59
+   (Senin, 19 Oktober 2026).
+5. Progress dikumpulkan melalui GitHub.
+6. Wajib dipresentasikan dengan membuat video dan
+   mengunggahnya ke YouTube.
+7. Boleh dikerjakan di mana saja.
+
+
+2. TARGET ANGKA PROGRES
+--------------------------------------------------------------
+Total kebutuhan fungsional (SRS)   : 40 RF
+Minimal 30%                        : 12 RF
+Target yang direncanakan           : 17 RF  (42,5%)
+
+RF yang dikerjakan (fitur esensial):
+  RF-01  Registrasi akun
+  RF-02  Login
+  RF-05  Pilih jenis ternak
+  RF-06  Ambil/unggah foto
+  RF-07  Validasi data dan hak akses scan
+  RF-08  Pra-pemrosesan gambar
+  RF-09  Pemilihan model AI per spesies
+  RF-10  Ekstraksi dan evaluasi fitur visual
+  RF-11  Klasifikasi penyakit
+  RF-12  Tampilkan akurasi (confidence)
+  RF-13  Peringatan akurasi rendah
+  RF-14  Rekomendasi obat medis
+  RF-15  Rekomendasi jamu/herbal
+  RF-16  Penyimpanan hasil diagnosis
+  RF-17  Pengiriman hasil ke peternak
+  RF-18  Lihat riwayat medis
+  RF-26  Kuota gratis 3x scan
+
+Batas aman: jika ada RF yang gagal, jumlah RF yang
+berjalan tetap tidak boleh di bawah 12.
+
+
+3. FITUR ESENSIAL DAN FITUR YANG DITUNDA
+--------------------------------------------------------------
+Alur inti yang dibuat:
+  Daftar/Login -> Pilih spesies -> Unggah foto -> Hasil
+  (penyakit + confidence + peringatan + rekomendasi)
+  -> Riwayat, dengan kuota 3x scan gratis.
+
+Ditunda (tampil abu-abu "segera" di aplikasi):
+  - Konsultasi dokter hewan (RF-31 s.d. RF-34)
+  - E-sertifikat (RF-20 s.d. RF-23)
+  - Peta wabah dan laporan wabah (RF-19, RF-24, RF-25)
+  - Verifikasi dokter (RF-04, RF-35 s.d. RF-37)
+  - Pembelian token dan Payment Gateway (RF-27 s.d. RF-30)
+  - Dashboard Admin (RF-38 s.d. RF-40)
+  - Lengkapi profil peternakan (RF-03)
+
+
+4. RANCANGAN TEKNIS
+--------------------------------------------------------------
+Frontend   : HTML, CSS, JavaScript (tampilan mobile)
+Backend    : Node.js + Express, SQLite, bcrypt, JWT, multer
+AI Service : Python (Flask), model DUMMY untuk UTS
+Desain     : Figma
+Alur       : Browser -> Node.js -> Flask -> Node.js -> Browser
+
+Aturan penting:
+  - Jika Flask error, kuota scan TIDAK berkurang.
+  - Password disimpan dalam bentuk hash.
+  - Foto: hanya JPG/PNG, maksimal 5 MB.
+
+
+5. STATUS PROGRES SAAT INI
+--------------------------------------------------------------
+[x] Dokumen SRS selesai
+[x] Dokumen SDD selesai
+[x] Jawaban kuis selesai (alur, metode, test case)
+[x] Desain Figma: landing, login, daftar, beranda,
+    scan (3 langkah), hasil analisis, riwayat medis
+[x] HTML/CSS halaman login (rapi dari export Figma)
+[ ] Prototype Figma diklik/dihubungkan antar frame
+[x] HTML/CSS halaman lain (daftar, beranda, scan, hasil,
+    riwayat)
+[x] Flask dummy
+[x] Backend Express + SQLite
+[x] Frontend tersambung ke backend
+[x] Testing dan screenshot (uji otomatis 36/36 lulus)
+[x] README final
+[ ] Video presentasi
+[ ] Unggah YouTube
+[ ] Push final ke GitHub
+
+RF selesai saat ini : 17 dari 17 (semua RF target UTS berjalan)
+
+
+6. RENCANA KERJA DAN CHECKLIST
+--------------------------------------------------------------
+TARGET 1 - Setup (Jumat malam, 30 menit)
+[ ] Pasang Node.js, Python, VS Code
+[ ] Buat repository GitHub "livestock-scan"
+[ ] Buat folder frontend, backend, ai-service, docs
+[ ] Salin SRS, SDD, screenshot Figma ke docs/
+[ ] Commit pertama
+
+TARGET 2 - Prototype Figma (15-20 menit)
+[ ] Hubungkan frame dengan On click -> Navigate to
+[ ] Coba tombol Play sampai alur lancar
+[ ] Salin link Share dan ekspor PNG ke docs/figma/
+
+TARGET 3 - HTML/CSS 6 halaman (maks 5-6 jam)
+[x] login.html
+[ ] daftar.html
+[ ] beranda.html
+[ ] riwayat.html
+[ ] scan.html (3 langkah)
+[ ] hasil.html
+[ ] Cocokkan dengan Figma (sekitar 90% cukup), commit
+
+TARGET 4 - Flask dummy (1 jam)
+[ ] Endpoint /predict mengembalikan penyakit + confidence
+[ ] Tes dengan Thunder Client, input salah ditolak (400)
+
+TARGET 5 - Backend: register dan login
+[ ] Tabel users dan riwayat
+[ ] POST /api/register, POST /api/login (bcrypt + JWT)
+[ ] Middleware cek token, GET /api/me
+
+TARGET 6 - Endpoint scan dan riwayat
+[ ] File rekomendasi.js (obat medis + herbal per penyakit)
+[ ] POST /api/scan (validasi, kuota, Flask, simpan)
+[ ] GET /api/riwayat
+[ ] Tes: scan ke-4 ditolak, Flask mati = kuota tetap
+
+TARGET 7 - Sambungkan frontend ke backend
+[ ] Login dan daftar
+[ ] Beranda (nama dan sisa scan)
+[ ] Scan -> Hasil
+[ ] Riwayat (kosong: "Belum ada riwayat scan")
+
+TARGET 8 - Testing dan dokumentasi
+[ ] Jalankan TC-F01 s.d. TC-F13, catat di
+    docs/hasil-testing.md
+[ ] Screenshot tiap layar
+[ ] Tulis README dengan tabel progres RF
+
+TARGET 9 - Video presentasi (3-5 menit)
+[ ] Perkenalan (nama, NIM, judul, masalah)
+[ ] Desain Figma dan prototype
+[ ] Demo: daftar, login, scan, hasil, riwayat
+[ ] Demo kuota habis
+[ ] Tabel progres RF (sebut persentase) dan rencana lanjut
+
+TARGET 10 - Pengumpulan
+[ ] Unggah video ke YouTube (Unlisted jika diizinkan)
+[ ] Tempel link YouTube dan Figma di README
+[ ] Push final ke GitHub
+[ ] Cek link lewat jendela incognito
+[ ] Repo public atau dosen sudah jadi collaborator
+
+
+7. JADWAL
+--------------------------------------------------------------
+Jumat 16 Okt  : Target 1, 2, mulai 3
+Sabtu 17 Okt  : Target 3 (selesai), 4, 5, 6, 7
+Minggu 18 Okt : Target 8, 9, 10 (selesai malam hari)
+Senin 19 Okt  : Cadangan dan perbaikan (batas 23.59)
+
+
+8. RISIKO DAN CARA MENGATASI
+--------------------------------------------------------------
+- Waktu mepet           -> korbankan kerapian tampilan dan model
+                           AI asli, bukan alur inti.
+- Model AI belum siap   -> pakai dummy dan jelaskan jujur di
+                           video dan README.
+- Video lama diproses   -> unggah paling lambat Minggu malam.
+- Commit menumpuk       -> commit setiap satu fitur selesai.
+- Link tidak bisa dibuka-> uji lewat jendela incognito.
+
+
+9. BUKTI YANG DIKUMPULKAN
+--------------------------------------------------------------
+- Repository GitHub dengan commit bertahap
+- README dengan tabel progres RF
+- Screenshot desain Figma dan aplikasi berjalan
+- Hasil testing (docs/hasil-testing.md)
+- Link video YouTube
+- Link prototype Figma
