@@ -94,23 +94,27 @@ Aturan penting:
 [x] Flask dummy
 [x] Backend Express + SQLite
 [x] Frontend tersambung ke backend
-[x] Testing dan screenshot (uji otomatis 36/36 lulus)
+[x] Testing otomatis API (36/36 lulus, docs/hasil-testing.md)
+[ ] Screenshot desain Figma dan aplikasi berjalan
 [x] README final
 [ ] Video presentasi
 [ ] Unggah YouTube
 [ ] Push final ke GitHub
 
-RF selesai saat ini : 17 dari 17 (semua RF target UTS berjalan)
+RF selesai saat ini : 17 dari 40 RF (42,5%)
+  - 14 RF berjalan penuh
+  - 3 RF (RF-09, RF-10, RF-11) berjalan dengan model AI dummy
+  - 23 RF sisanya ditunda sesuai rencana
 
 
 6. RENCANA KERJA DAN CHECKLIST
 --------------------------------------------------------------
 TARGET 1 - Setup (Jumat malam, 30 menit)
-[ ] Pasang Node.js, Python, VS Code
-[ ] Buat repository GitHub "livestock-scan"
-[ ] Buat folder frontend, backend, ai-service, docs
+[x] Pasang Node.js, Python, VS Code
+[x] Buat repository GitHub "livestockhealth-scan"
+[x] Buat folder frontend, backend, ai-service, docs
 [ ] Salin SRS, SDD, screenshot Figma ke docs/
-[ ] Commit pertama
+[x] Commit pertama
 
 TARGET 2 - Prototype Figma (15-20 menit)
 [ ] Hubungkan frame dengan On click -> Navigate to
@@ -119,39 +123,39 @@ TARGET 2 - Prototype Figma (15-20 menit)
 
 TARGET 3 - HTML/CSS 6 halaman (maks 5-6 jam)
 [x] login.html
-[ ] daftar.html
-[ ] beranda.html
-[ ] riwayat.html
-[ ] scan.html (3 langkah)
-[ ] hasil.html
-[ ] Cocokkan dengan Figma (sekitar 90% cukup), commit
+[x] daftar.html
+[x] beranda.html
+[x] riwayat.html
+[x] scan.html (3 langkah)
+[x] hasil.html
+[x] Tampilan dirapikan (lihat catatan desain di README), commit
 
 TARGET 4 - Flask dummy (1 jam)
-[ ] Endpoint /predict mengembalikan penyakit + confidence
-[ ] Tes dengan Thunder Client, input salah ditolak (400)
+[x] Endpoint /predict mengembalikan penyakit + confidence
+[x] Input salah ditolak (400)
 
 TARGET 5 - Backend: register dan login
-[ ] Tabel users dan riwayat
-[ ] POST /api/register, POST /api/login (bcrypt + JWT)
-[ ] Middleware cek token, GET /api/me
+[x] Tabel users dan riwayat
+[x] POST /api/register, POST /api/login (bcrypt + JWT)
+[x] Middleware cek token, GET /api/me
 
 TARGET 6 - Endpoint scan dan riwayat
-[ ] File rekomendasi.js (obat medis + herbal per penyakit)
-[ ] POST /api/scan (validasi, kuota, Flask, simpan)
-[ ] GET /api/riwayat
-[ ] Tes: scan ke-4 ditolak, Flask mati = kuota tetap
+[x] File rekomendasi.js (obat medis + herbal per penyakit)
+[x] POST /api/scan (validasi, kuota, Flask, simpan)
+[x] GET /api/riwayat
+[x] Tes: scan ke-4 ditolak, Flask mati = kuota tetap
 
 TARGET 7 - Sambungkan frontend ke backend
-[ ] Login dan daftar
-[ ] Beranda (nama dan sisa scan)
-[ ] Scan -> Hasil
-[ ] Riwayat (kosong: "Belum ada riwayat scan")
+[x] Login dan daftar
+[x] Beranda (nama dan sisa scan)
+[x] Scan -> Hasil
+[x] Riwayat (kosong: "Belum ada riwayat scan")
 
 TARGET 8 - Testing dan dokumentasi
-[ ] Jalankan TC-F01 s.d. TC-F13, catat di
+[x] Jalankan TC-F01 s.d. TC-F13, catat di
     docs/hasil-testing.md
 [ ] Screenshot tiap layar
-[ ] Tulis README dengan tabel progres RF
+[x] Tulis README dengan tabel progres RF
 
 TARGET 9 - Video presentasi (3-5 menit)
 [ ] Perkenalan (nama, NIM, judul, masalah)
