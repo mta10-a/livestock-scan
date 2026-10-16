@@ -178,6 +178,16 @@ node server.js           # berjalan di http://localhost:3000
 - Proses AI maksimal 10 detik pada jaringan 4G (NFR-06).
 - Akses fitur dibatasi per peran (NFR-13).
 
+**Konvensi warna keyakinan (RF-12, RF-13):** donat dan pil persen memakai skala
+hijau -> kuning -> merah yang naik seiring naiknya nilai, sehingga merah berarti
+temuan paling kuat (perlu penanganan segera) dan hijau berarti hasil masih meragukan.
+
+| Nilai keyakinan | Warna | Arti | Catatan di halaman hasil |
+|---|---|---|---|
+| < 70% | hijau | hasil meragukan | abu-abu: keyakinan rendah, ambil ulang foto |
+| 70-85% | kuning | indikasi awal | kuning: bukan diagnosis pasti |
+| >= 85% | merah | temuan kuat | merah: perlu penanganan segera |
+
 ## 12. Pengujian
 
 Test case ada pada dokumen kuis (TC-F01 s.d. TC-F20).

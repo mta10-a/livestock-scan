@@ -405,9 +405,10 @@ svg { display: block; }
 .donat { width: 148px; height: 148px; transform: rotate(-90deg); }
 .donat circle { fill: none; stroke-width: 11; }
 .donat .jejak { stroke: var(--garis); }
+/* Skala warna keyakinan: rendah = hijau, sedang = kuning, tinggi/gawat = merah. */
 .donat .nilai { stroke: var(--hijau); stroke-linecap: round; transition: stroke-dashoffset .7s ease; }
-.donat.rendah .nilai { stroke: var(--merah); }
 .donat.sedang .nilai { stroke: #c98a12; }
+.donat.tinggi .nilai { stroke: var(--merah); }
 .donat-inti {
   position: absolute;
   inset: 0;
@@ -432,7 +433,7 @@ svg { display: block; }
   line-height: 1.3;
   margin-top: 18px;
 }
-.hero-hasil .spesies { font-size: 11px; color: var(--redup); margin-top: 5px; }
+.hero-hasil .meta-hasil { font-size: 11px; color: var(--redup); margin-top: 5px; }
 
 .catatan {
   display: flex;
@@ -446,6 +447,7 @@ svg { display: block; }
 .catatan svg { width: 17px; height: 17px; flex: 0 0 auto; margin-top: 1px; }
 .catatan.hati { background: var(--kuning-tint); color: #6b4900; }
 .catatan.bahaya { background: var(--merah-tint); color: #8a1f19; }
+.catatan.netral { background: var(--abu-tint); color: var(--ink-2); }
 
 .daftar { list-style: none; }
 .daftar li {

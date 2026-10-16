@@ -8,8 +8,9 @@
    lewat Live Server / file:// arahkan ke localhost:3000. */
 const API_BASE = location.origin === 'http://localhost:3000' ? '' : 'http://localhost:3000';
 
-/* Ambang keyakinan rendah (RF-13). */
+/* Ambang tingkat keyakinan (RF-12, RF-13). */
 const AMBANG_PERINGATAN = 0.70;
+const AMBANG_TINGGI = 0.85;
 /* Ukuran maksimal foto 5 MB (validasi awal di sisi klien). */
 const UKURAN_MAKS = 5 * 1024 * 1024;
 const TIPE_DIIZINKAN = ['image/jpeg', 'image/jpg', 'image/png'];
@@ -168,24 +169,23 @@ function formatTanggal(iso) {
 const persen = (x) => `${Math.round((x || 0) * 100)}%`;
 
 function tingkatKeyakinan(x) {
-  if (x >= 0.85) return 'tinggi';
+  if (x >= AMBANG_TINGGI) return 'tinggi';
   if (x >= AMBANG_PERINGATAN) return 'sedang';
   return 'rendah';
 }
 
-/* Kelas warna untuk donat keyakinan. */
+/* Skala warna keyakinan.
+   Makin RENDAH makin hijau, makin TINGGI (makin gawat) makin merah. */
+const WARNA_SKALA = { rendah: 'hijau', sedang: 'kuning', tinggi: 'merah' };
+
+/* Kelas warna untuk donat keyakinan ('' = warna bawaan CSS, yaitu hijau). */
 function kelasBar(x) {
-  if (x >= 0.85) return '';
-  if (x >= AMBANG_PERINGATAN) return 'sedang';
-  return 'rendah';
+  const tingkat = tingkatKeyakinan(x);
+  return tingkat === 'rendah' ? '' : tingkat;
 }
 
-/* Kelas warna untuk pil status. */
-function kelasPil(x) {
-  if (x >= 0.85) return 'hijau';
-  if (x >= AMBANG_PERINGATAN) return 'kuning';
-  return 'merah';
-}
+/* Kelas warna untuk pil persen. */
+const kelasPil = (x) => WARNA_SKALA[tingkatKeyakinan(x)];
 
 const spesiesInfo = (kode) => SPESIES[kode] || { nama: kode || '-', penyakit: [] };
 

@@ -37,7 +37,7 @@
     function render(hasil) {
       const s = spesiesInfo(hasil.spesies);
       const c = hasil.confidence ?? 0;
-      const rendah = c < AMBANG_PERINGATAN;
+      const tingkat = tingkatKeyakinan(c);
       const geser = (KELILING * (1 - c)).toFixed(1);
 
       const rek = hasil.rekomendasi || {};
@@ -61,7 +61,7 @@
           </div>
 
           <div class="penyakit">${hasil.penyakit}</div>
-          <div class="spesies">${s.nama} · keyakinan ${tingkatKeyakinan(c)} · model dummy v1</div>
+          <div class="meta-hasil">${s.nama} · keyakinan ${tingkat} · model dummy v1</div>
 
           ${kf ? `<p class="kecil teks-redup" style="margin-top:12px">
             Foto ${kf.lebar_asli}×${kf.tinggi_asli} px dinormalisasi ke ${kf.ukuran_model.join('×')} ·
@@ -69,16 +69,22 @@
           </p>` : ''}
         </section>
 
-        ${rendah
-          ? `<div class="catatan bahaya">
+        ${{
+          rendah: `<div class="catatan netral">
                ${IKON.peringatan}
-               <span><b>Keyakinan rendah.</b> Nilai di bawah ${persen(AMBANG_PERINGATAN)}. Ambil ulang foto dengan cahaya
-               yang cukup, lalu konsultasikan ke dokter hewan.</span>
-             </div>`
-          : `<div class="catatan hati">
+               <span><b>Keyakinan rendah.</b> Nilai di bawah ${persen(AMBANG_PERINGATAN)}, sehingga hasil belum dapat
+               dipercaya. Ambil ulang foto dengan cahaya yang cukup, lalu konsultasikan ke dokter hewan.</span>
+             </div>`,
+          sedang: `<div class="catatan hati">
                ${IKON.peringatan}
                <span>Hasil ini <b>indikasi awal</b>, bukan diagnosis pasti. Tetap konsultasikan ke dokter hewan.</span>
-             </div>`}
+             </div>`,
+          tinggi: `<div class="catatan bahaya">
+               ${IKON.peringatan}
+               <span><b>Perlu penanganan segera.</b> Ternak terindikasi ${hasil.penyakit} dengan keyakinan
+               ${persen(c)}. Pisahkan ternak yang sakit dan hubungi dokter hewan.</span>
+             </div>`,
+        }[tingkat]}
 
         ${hasil.gejala ? `
           <div class="bagian"><span class="label-kecil">Catatan gejala</span></div>
