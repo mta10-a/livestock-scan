@@ -1,10 +1,24 @@
 /**
  * Uji API LivestockHealth Scan (TC-F01 s.d. TC-F13 + tambahan).
  * Jalankan: node uji-api.mjs
+ *
+ * Skrip ini mandiri: cukup backend utama hidup di port 3000 (BASE1).
+ * Untuk kasus "layanan AI mati", skrip mengangkat sendiri backend kedua
+ * di port PORT_UJI (bawaan 3101) yang diarahkan ke port Flask kosong,
+ * lalu mematikannya lagi setelah selesai.
  */
 
+import { spawn } from 'node:child_process';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 const B1 = process.env.BASE1 || 'http://127.0.0.1:3000';
-const B2 = process.env.BASE2 || 'http://127.0.0.1:3001';
+/* Backend kedua diangkat sendiri oleh skrip ini, memakai port & database
+   terpisah, untuk menguji perilaku "layanan AI mati". */
+const PORT_UJI = Number(process.env.PORT_UJI || 3101);
+const B2 = process.env.BASE2 || `http://127.0.0.1:${PORT_UJI}`;
+const DIR_INI = fileURLToPath(new URL('.', import.meta.url));
 
 let lulus = 0, gagal = 0;
 const catatan = [];
@@ -14,12 +28,30 @@ function cek(nama, kondisi, detail = '') {
   else { gagal++; catatan.push(`  GAGAL ${nama}${detail ? ' -> ' + detail : ''}`); }
 }
 
-async function tunggu(url, percobaan = 40) {
+/* Tunggu sampai backend benar-benar siap: /api/me tanpa token harus 401. */
+async function tungguBackend(base, percobaan = 40) {
   for (let i = 0; i < percobaan; i++) {
-    try { const r = await fetch(url); if (r.status < 500) return true; } catch { /* belum siap */ }
+    try {
+      const r = await fetch(`${base}/api/me`);
+      if (r.status === 401) return true;
+    } catch { /* belum siap */ }
     await new Promise((r) => setTimeout(r, 500));
   }
   return false;
+}
+
+function angkatBackendUji() {
+  const anak = spawn(process.execPath, ['server.js'], {
+    cwd: DIR_INI,
+    env: {
+      ...process.env,
+      PORT: String(PORT_UJI),
+      FLASK_URL: 'http://127.0.0.1:5999', // sengaja diarahkan ke port kosong
+      DATA_DIR: path.join(os.tmpdir(), 'livestockhealth-uji'),
+    },
+    stdio: 'ignore',
+  });
+  return anak;
 }
 
 /* Gambar JPG/PNG sungguhan (kecil) agar pra-pemrosesan Pillow (RF-08) ikut teruji. */
@@ -51,7 +83,7 @@ const emailUnik = () => `peternak${Date.now()}${Math.floor(Math.random() * 999)}
 async function main() {
   console.log('== Uji API LivestockHealth Scan ==\n');
 
-  if (!await tunggu(B1 + '/api/me')) { console.error('Backend tidak merespons di ' + B1); process.exit(1); }
+  if (!await tungguBackend(B1)) { console.error('Backend tidak merespons di ' + B1); process.exit(1); }
 
   /* ---------- TC-F01 Registrasi ---------- */
   const emailA = emailUnik();
@@ -168,18 +200,25 @@ async function main() {
   cek('RF-18 pengguna lain tidak melihat riwayat orang lain', r.data.riwayat?.length === 0, String(r.data.riwayat?.length));
 
   /* ---------- TC-F08 Flask mati: kuota tidak berkurang ---------- */
-  if (await tunggu(B2 + '/api/me', 3)) {
-    const emailC = emailUnik();
-    const rc = await kirim(B2, '/api/register', { method: 'POST', body: { nama: 'Andi Uji', email: emailC, password: 'rahasia123' } });
-    form = new FormData();
-    form.append('spesies', 'sapi');
-    form.append('gambar', fotoJpeg());
-    r = await kirim(B2, '/api/scan', { method: 'POST', token: rc.data.token, form });
-    cek('Flask mati -> 502', r.status === 502, String(r.status));
-    const me = await kirim(B2, '/api/me', { token: rc.data.token });
-    cek('Flask mati -> kuota tetap 3', me.data.sisa_scan === 3, String(me.data.sisa_scan));
-  } else {
-    catatan.push('  LEWAT uji Flask-mati (backend kedua di 3001 tidak aktif)');
+  /* Skrip mengangkat sendiri backend kedua yang diarahkan ke port Flask kosong,
+     supaya pengujian ini mandiri dan tidak bergantung proses lain. */
+  const anakUji = angkatBackendUji();
+  try {
+    if (await tungguBackend(B2)) {
+      const emailC = emailUnik();
+      const rc = await kirim(B2, '/api/register', { method: 'POST', body: { nama: 'Andi Uji', email: emailC, password: 'rahasia123' } });
+      form = new FormData();
+      form.append('spesies', 'sapi');
+      form.append('gambar', fotoJpeg());
+      r = await kirim(B2, '/api/scan', { method: 'POST', token: rc.data.token, form });
+      cek('Flask mati -> 502', r.status === 502, String(r.status));
+      const me = await kirim(B2, '/api/me', { token: rc.data.token });
+      cek('Flask mati -> kuota tetap 3', me.data.sisa_scan === 3, String(me.data.sisa_scan));
+    } else {
+      catatan.push(`  LEWAT uji Flask-mati (backend uji di ${B2} gagal diangkat)`);
+    }
+  } finally {
+    anakUji.kill();
   }
 
   /* ---------- Statis frontend ---------- */

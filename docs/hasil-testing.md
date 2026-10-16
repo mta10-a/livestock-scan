@@ -35,13 +35,16 @@ node uji-api.mjs
 ```
 
 Skrip akan mencetak daftar pemeriksaan beserta ringkasan `lulus/gagal`.
+Cukup **backend utama** (port 3000) yang perlu hidup; untuk kasus "layanan AI mati"
+skrip mengangkat sendiri backend kedua di port 3101 (basis data sementara di folder
+temp) lalu mematikannya lagi, sehingga pengujian tidak bergantung proses lain.
 
 ## Ringkasan
 
 | Keterangan | Jumlah |
 |---|---|
-| Total pemeriksaan | 33 |
-| Lulus | 33 |
+| Total pemeriksaan | 36 |
+| Lulus | 36 |
 | Gagal | 0 |
 
 ## Rincian pemeriksaan
@@ -78,6 +81,7 @@ Skrip akan mencetak daftar pemeriksaan beserta ringkasan `lulus/gagal`.
 |---|---|
 | Berkas `.txt` ditolak (400) | Lulus |
 | Berkas lebih dari 5 MB ditolak (400) | Lulus |
+| Berkas `.jpg` yang isinya bukan gambar ditolak (400) | Lulus |
 | Spesies tidak dikenal ditolak (400) | Lulus |
 | Scan tanpa foto ditolak (400) | Lulus |
 | Validasi gagal **tidak** memotong kuota | Lulus |
@@ -93,6 +97,9 @@ Skrip akan mencetak daftar pemeriksaan beserta ringkasan `lulus/gagal`.
 | Rekomendasi obat medis terisi | Lulus |
 | Rekomendasi jamu/herbal terisi | Lulus |
 | Kuota berkurang 3 -> 2 setelah scan | Lulus |
+| Kuota habis tepat setelah 3x scan | Lulus |
+| Pra-pemrosesan (RF-08) menghasilkan ukuran model 224x224 | Lulus |
+| Kecerahan & kontras dihitung dari piksel foto (RF-10) | Lulus |
 | Scan sapi, kambing, dan ayam berhasil | Lulus |
 
 ### Riwayat medis (RF-18)
