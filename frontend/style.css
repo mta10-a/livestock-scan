@@ -17,35 +17,43 @@
   --shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
 }
 
+html, body { height: 100%; }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: 'Poppins', Helvetica, sans-serif;
   background: #e9ece6;
   color: var(--teks);
-  min-height: 100vh;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
 
-/* ---------- Kerangka layar (mobile 412px) ---------- */
+/* ---------- Kerangka layar (mobile 412px) ----------
+   Navbar atas dan navigasi bawah TIDAK ikut bergulir.
+   Hanya area .konten yang memiliki scroll sendiri. */
 .app {
   max-width: 412px;
-  min-height: 100vh;
+  height: 100%;
   margin: 0 auto;
   background: var(--latar);
   display: flex;
   flex-direction: column;
   position: relative;
+  overflow: hidden;
   box-shadow: 0 0 24px rgba(0, 0, 0, 0.08);
 }
 
 .konten {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 20px 22px 28px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .konten.tanpa-nav { padding: 20px 26px 32px; }
-.konten.center { display: flex; align-items: center; }
+.konten.center { display: flex; flex-direction: column; }
+.konten.center > * { margin-block: auto; }
 
 /* ---------- Judul & teks ---------- */
 .judul { font-size: 20px; font-weight: 600; }
@@ -150,25 +158,30 @@ input:disabled { background: #f2f2f2; }
 
 /* ---------- Navbar atas ---------- */
 .navbar-atas {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 14px 22px;
   background: var(--latar);
+  border-bottom: 1px solid var(--garis-muda);
+  position: relative;
+  z-index: 2;
 }
 .navbar-atas .logo { width: 30px; height: 34px; object-fit: contain; }
 .navbar-atas .nama-merek { font-size: 15px; font-weight: 600; color: var(--hijau); }
 
 /* ---------- Navbar bawah ---------- */
 .nav-bawah {
+  flex: 0 0 auto;
   display: flex;
   justify-content: space-around;
   align-items: center;
   padding: 10px 8px 14px;
   background: #fff;
   border-top: 1px solid var(--garis-muda);
-  position: sticky;
-  bottom: 0;
+  position: relative;
+  z-index: 2;
 }
 .nav-bawah a {
   display: flex;
