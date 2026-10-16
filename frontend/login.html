@@ -9,32 +9,39 @@
 <body>
   <div class="app">
     <div class="konten tanpa-nav center">
-      <form class="kartu" id="form-masuk" style="width:100%" novalidate>
-        <div class="merek" style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-          <span class="logo" data-logo style="display:block;width:30px;height:34px"></span>
-          <span class="nama-merek" style="font-size:14px;font-weight:600;color:var(--hijau)">LivestockHealth Scan</span>
+      <form class="kartu" id="form-masuk" style="width:100%;padding:26px 22px" novalidate>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:11px;margin-bottom:24px">
+          <span class="logo" data-logo style="width:40px;height:46px"></span>
+          <div class="teks-tengah">
+            <div class="tebal" style="font-size:13.5px;color:var(--hijau);letter-spacing:-0.01em">LivestockHealth Scan</div>
+            <div class="kecil teks-redup" style="margin-top:1px">Deteksi dini penyakit luar ternak</div>
+          </div>
         </div>
 
-        <h1 class="judul teks-tengah">Masuk ke Akun</h1>
-        <p class="subjudul teks-tengah" style="margin-bottom:14px">Selamat datang kembali</p>
+        <h1 class="judul">Masuk</h1>
+        <p class="subjudul" style="margin-bottom:20px">Gunakan email dan kata sandi akun Anda.</p>
 
-        <label for="email">Email</label>
-        <input id="email" name="email" type="email" placeholder="nama@gmail.com" autocomplete="email" required />
+        <div class="medan">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" placeholder="nama@gmail.com" autocomplete="email" required />
+        </div>
 
-        <label for="password">Kata Sandi</label>
-        <input id="password" name="password" type="password" placeholder="Kata sandi Anda" autocomplete="current-password" required />
+        <div class="medan">
+          <label for="password">Kata Sandi</label>
+          <input id="password" name="password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+        </div>
 
         <p class="pesan" id="pesan" role="alert"></p>
 
         <button class="tombol mtk" id="tombol-masuk" type="submit">Masuk</button>
 
-        <div class="tautan">
-          <a href="#" onclick="lupaSandi();return false">Lupa Kata Sandi</a>
-          <a href="daftar.html">Daftar Akun</a>
+        <div class="baris-antara" style="margin-top:15px">
+          <a class="tautan-kecil" href="#" onclick="lupaSandi();return false">Lupa kata sandi</a>
+          <a class="tautan-kecil" href="daftar.html">Buat akun baru</a>
         </div>
 
-        <p class="kecil teks-tengah teks-redup" style="margin-top:18px">
-          Akun baru mendapat <b>3x scan gratis</b>.
+        <p class="kecil teks-redup teks-tengah" style="margin-top:22px;padding-top:16px;border-top:1px solid var(--garis)">
+          Akun baru mendapat <b class="tebal" style="color:var(--hijau)">3x scan gratis</b>.
         </p>
       </form>
     </div>
@@ -45,7 +52,7 @@
     pasangLogo();
 
     function lupaSandi() {
-      setPesan('pesan', 'Fitur lupa kata sandi belum tersedia pada prototype UTS.');
+      toast('Fitur lupa kata sandi belum tersedia pada prototype UTS.');
     }
 
     el('form-masuk').addEventListener('submit', async (e) => {
@@ -55,19 +62,15 @@
       const email = el('email').value.trim();
       const password = el('password').value;
 
-      if (!email || !password) {
-        setPesan('pesan', 'Email dan kata sandi wajib diisi.');
-        return;
-      }
+      if (!email || !password) return setPesan('pesan', 'Email dan kata sandi wajib diisi.');
 
       const tombol = el('tombol-masuk');
       tombol.disabled = true;
-      tombol.textContent = 'Memproses…';
+      tombol.textContent = 'Memeriksa…';
 
       try {
         const data = await api('/api/login', { method: 'POST', body: { email, password } });
         setToken(data.token);
-        setPesan('pesan', 'Berhasil masuk. Mengalihkan…', 'sukses');
         location.replace('beranda.html');
       } catch (err) {
         setPesan('pesan', err.message);

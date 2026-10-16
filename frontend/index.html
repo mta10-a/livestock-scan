@@ -9,9 +9,10 @@
 <body>
   <div class="app">
     <div class="konten tanpa-nav center">
-      <div class="loading" style="width:100%">
-        <span class="logo" data-logo style="display:block;width:48px;height:56px;margin:0 auto 16px"></span>
-        <p class="sedang teks-redup">Memuat aplikasi…</p>
+      <div class="memuat" style="width:100%">
+        <span class="logo" data-logo style="width:44px;height:50px"></span>
+        <div class="tebal" style="font-size:13.5px;color:var(--hijau)">LivestockHealth Scan</div>
+        <div class="spinner"></div>
       </div>
     </div>
   </div>
@@ -22,7 +23,7 @@
     // Beranda bila sudah punya token, jika belum arahkan ke halaman masuk.
     setTimeout(() => {
       location.replace(getToken() ? 'beranda.html' : 'login.html');
-    }, 400);
+    }, 450);
   </script>
 </body>
 </html>

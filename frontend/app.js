@@ -15,25 +15,31 @@ const UKURAN_MAKS = 5 * 1024 * 1024;
 const TIPE_DIIZINKAN = ['image/jpeg', 'image/jpg', 'image/png'];
 
 const SPESIES = {
-  sapi: { nama: 'Sapi', emoji: '🐄', penyakit: ['Penyakit Mulut dan Kuku (PMK)', 'Lumpy Skin Disease (LSD)'] },
-  kambing: { nama: 'Kambing', emoji: '🐐', penyakit: ['Scabies', 'Orf'] },
-  ayam: { nama: 'Ayam', emoji: '🐔', penyakit: ['Coccidiosis'] },
+  sapi: { nama: 'Sapi', penyakit: ['Penyakit Mulut dan Kuku (PMK)', 'Lumpy Skin Disease (LSD)'] },
+  kambing: { nama: 'Kambing', penyakit: ['Scabies', 'Orf'] },
+  ayam: { nama: 'Ayam', penyakit: ['Coccidiosis'] },
 };
 
-/* ---------------------- Ikon ---------------------- */
-const IKON = {
-  beranda: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>',
-  scan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="3.2"/></svg>',
-  riwayat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg>',
-  peta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>',
-  kamera: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z"/><circle cx="12" cy="13" r="3.4"/></svg>',
-  obat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="8" width="18" height="13" rx="2"/><path d="M8 8V6a4 4 0 0 1 8 0v2"/><path d="M12 12v5M9.5 14.5h5"/></svg>',
-  herbal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21V11"/><path d="M12 11c0-4 3-7 8-7 0 5-3 8-8 7Z"/><path d="M12 15c-4 0-7-2.5-7-7 4 0 7 2.5 7 7Z"/></svg>',
-  dokumen: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3h8l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 12h6M9 16h6"/></svg>',
-  token: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9 10.5h6M9 13.5h6"/></svg>',
-  lapor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 21V4a1 1 0 0 1 1-1h9l-1.5 3L15 9H6"/></svg>',
-  peringatan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 9v4.5M12 17h.01"/></svg>',
-};
+/* ---------------------- Ikon (SVG garis, bukan emoji) ---------------------- */
+const IKON = (() => {
+  const gaya = 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
+  const bungkus = (isi) => `<svg viewBox="0 0 24 24" ${gaya}>${isi}</svg>`;
+  return {
+    beranda: bungkus('<path d="M3.5 10.4 12 3.6l8.5 6.8"/><path d="M5.6 9.4V19a1.4 1.4 0 0 0 1.4 1.4h10a1.4 1.4 0 0 0 1.4-1.4V9.4"/><path d="M10 20.4v-5.2h4v5.2"/>'),
+    scan: bungkus('<path d="M4 8.6V6.2A2.2 2.2 0 0 1 6.2 4h2.4M15.4 4h2.4A2.2 2.2 0 0 1 20 6.2v2.4M20 15.4v2.4a2.2 2.2 0 0 1-2.2 2.2h-2.4M8.6 20H6.2A2.2 2.2 0 0 1 4 17.8v-2.4"/><circle cx="12" cy="12" r="3"/>'),
+    riwayat: bungkus('<path d="M3.6 12a8.4 8.4 0 1 0 2.6-6.1"/><path d="M3.4 4.6v4.2h4.2"/><path d="M12 8.2V12l2.6 1.8"/>'),
+    peta: bungkus('<path d="M12 20.6s6.4-5.6 6.4-10a6.4 6.4 0 1 0-12.8 0c0 4.4 6.4 10 6.4 10Z"/><circle cx="12" cy="10.4" r="2.3"/>'),
+    kamera: bungkus('<path d="M4 8.6h2.4l1.5-2.2h8.2l1.5 2.2H20a1.4 1.4 0 0 1 1.4 1.4v8.6A1.4 1.4 0 0 1 20 20H4a1.4 1.4 0 0 1-1.4-1.4V10A1.4 1.4 0 0 1 4 8.6Z"/><circle cx="12" cy="14" r="3.2"/>'),
+    obat: bungkus('<rect x="3" y="8.4" width="18" height="7.2" rx="3.6"/><path d="M12 8.4v7.2"/><path d="M6.6 12h1.8M15.6 12h1.8"/>'),
+    herbal: bungkus('<path d="M12 20.4v-8.6"/><path d="M12 11.8c0-3.9 2.9-6.8 7.4-6.8 0 4.8-3 7.9-7.4 6.8Z"/><path d="M12 15.6c-3.9 0-6.6-2.4-6.6-6.9 3.8 0 6.6 2.4 6.6 6.9Z"/>'),
+    dokumen: bungkus('<path d="M7.4 3.6h6l4.2 4.2v12a1.4 1.4 0 0 1-1.4 1.4H7.4A1.4 1.4 0 0 1 6 19.8V5a1.4 1.4 0 0 1 1.4-1.4Z"/><path d="M13.4 3.6V7.8h4.2"/><path d="M9 13h6M9 16.4h4"/>'),
+    token: bungkus('<circle cx="12" cy="12" r="8"/><path d="M12 7.8v8.4M9.4 10.4h5.2M9.4 13.6h5.2"/>'),
+    lapor: bungkus('<path d="M6 20.4V4.4"/><path d="M6 5.2h9.6l-1.4 3 1.4 3H6"/>'),
+    peringatan: bungkus('<path d="M12 4.4 3.2 19.6h17.6L12 4.4Z"/><path d="M12 10v4.2M12 16.9h.01"/>'),
+    chevron: bungkus('<path d="m9.5 6.5 5.5 5.5-5.5 5.5"/>'),
+    kosong: bungkus('<path d="M4 12.6 6.6 5.4A1.4 1.4 0 0 1 8 4.5h8a1.4 1.4 0 0 1 1.4.9L20 12.6v5.6a1.4 1.4 0 0 1-1.4 1.4H5.4A1.4 1.4 0 0 1 4 18.2Z"/><path d="M4 12.6h4.4l1 2.2h5.2l1-2.2H20"/>'),
+  };
+})();
 
 /* Logo merek (SVG inline supaya tidak bergantung file gambar). */
 const LOGO = '<svg viewBox="0 0 40 46" width="100%" height="100%" fill="none">' +
@@ -59,7 +65,23 @@ function setPesan(id, pesan, tipe = 'error') {
   const node = el(id);
   if (!node) return;
   node.textContent = pesan || '';
-  node.className = 'pesan ' + (pesan ? tipe : '');
+  node.className = 'pesan' + (pesan ? ' ' + tipe : '');
+}
+
+/* Notifikasi ringkas melayang (pengganti alert). */
+function toast(pesan) {
+  let t = el('toast-app');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast-app';
+    t.className = 'toast';
+    t.setAttribute('role', 'status');
+    document.body.appendChild(t);
+  }
+  t.textContent = pesan;
+  t.classList.add('tampil');
+  clearTimeout(t._jam);
+  t._jam = setTimeout(() => t.classList.remove('tampil'), 2800);
 }
 
 function navBawah(aktif) {
@@ -142,12 +164,21 @@ function tingkatKeyakinan(x) {
   return 'rendah';
 }
 
+/* Kelas warna untuk donat keyakinan. */
 function kelasBar(x) {
-  if (x >= AMBANG_PERINGATAN) return x >= 0.85 ? '' : 'sedang';
+  if (x >= 0.85) return '';
+  if (x >= AMBANG_PERINGATAN) return 'sedang';
   return 'rendah';
 }
 
-const spesiesInfo = (kode) => SPESIES[kode] || { nama: kode || '-', emoji: '🐾' };
+/* Kelas warna untuk pil status. */
+function kelasPil(x) {
+  if (x >= 0.85) return 'hijau';
+  if (x >= AMBANG_PERINGATAN) return 'kuning';
+  return 'merah';
+}
+
+const spesiesInfo = (kode) => SPESIES[kode] || { nama: kode || '-', penyakit: [] };
 
 /* ---------------------- Hasil scan sementara ---------------------- */
 const simpanHasil = (hasil) => sessionStorage.setItem('hasil_scan', JSON.stringify(hasil));

@@ -9,37 +9,49 @@
 <body>
   <div class="app">
     <div class="konten tanpa-nav center">
-      <form class="kartu" id="form-daftar" style="width:100%" novalidate>
-        <div class="merek" style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-          <span class="logo" data-logo style="display:block;width:30px;height:34px"></span>
-          <span class="nama-merek" style="font-size:14px;font-weight:600;color:var(--hijau)">LivestockHealth Scan</span>
+      <form class="kartu" id="form-daftar" style="width:100%;padding:26px 22px" novalidate>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:11px;margin-bottom:24px">
+          <span class="logo" data-logo style="width:40px;height:46px"></span>
+          <div class="teks-tengah">
+            <div class="tebal" style="font-size:13.5px;color:var(--hijau);letter-spacing:-0.01em">LivestockHealth Scan</div>
+            <div class="kecil teks-redup" style="margin-top:1px">Deteksi dini penyakit luar ternak</div>
+          </div>
         </div>
 
-        <h1 class="judul teks-tengah">Buat Akun Baru</h1>
-        <p class="subjudul teks-tengah" style="margin-bottom:14px">Daftar sebagai peternak</p>
+        <h1 class="judul">Buat akun</h1>
+        <p class="subjudul" style="margin-bottom:20px">Isi data berikut untuk mulai memindai ternak.</p>
 
-        <label for="nama">Nama Lengkap</label>
-        <input id="nama" type="text" placeholder="Nama Anda" autocomplete="name" required />
+        <div class="medan">
+          <label for="nama">Nama lengkap</label>
+          <input id="nama" type="text" placeholder="Nama Anda" autocomplete="name" required />
+        </div>
 
-        <label for="email">Email</label>
-        <input id="email" type="email" placeholder="nama@gmail.com" autocomplete="email" required />
+        <div class="medan">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="nama@gmail.com" autocomplete="email" required />
+        </div>
 
-        <label for="password">Kata Sandi</label>
-        <input id="password" type="password" placeholder="Minimal 6 karakter" autocomplete="new-password" required />
+        <div class="medan">
+          <label for="password">Kata sandi</label>
+          <input id="password" type="password" placeholder="Minimal 6 karakter" autocomplete="new-password" required />
+        </div>
 
-        <label>Daftar Sebagai</label>
-        <div style="display:flex;gap:8px">
-          <button type="button" class="tombol kecil lebar-penuh" id="peran-peternak">Peternak</button>
-          <button type="button" class="tombol kecil sekunder lebar-penuh" id="peran-dokter" title="Belum tersedia">Dokter Hewan <span class="segera">Segera</span></button>
+        <div class="medan">
+          <label>Daftar sebagai</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button type="button" class="chip aktif" id="peran-peternak">Peternak</button>
+            <button type="button" class="chip" id="peran-dokter">Dokter Hewan</button>
+            <span class="pil abu">segera</span>
+          </div>
         </div>
 
         <p class="pesan" id="pesan" role="alert"></p>
 
         <button class="tombol mtk" id="tombol-daftar" type="submit">Daftar</button>
 
-        <div class="tautan" style="justify-content:center">
-          <span class="teks-redup">Sudah punya akun? <a href="login.html">Masuk</a></span>
-        </div>
+        <p class="kecil teks-tengah teks-redup" style="margin-top:20px">
+          Sudah punya akun? <a class="tautan-kecil" href="login.html">Masuk</a>
+        </p>
       </form>
     </div>
   </div>
@@ -49,7 +61,7 @@
     pasangLogo();
 
     el('peran-dokter').addEventListener('click', () => {
-      setPesan('pesan', 'Registrasi Dokter Hewan belum tersedia pada prototype UTS (ditunda).');
+      toast('Registrasi Dokter Hewan belum tersedia pada prototype UTS.');
     });
 
     el('form-daftar').addEventListener('submit', async (e) => {
@@ -71,7 +83,6 @@
       try {
         const data = await api('/api/register', { method: 'POST', body: { nama, email, password } });
         setToken(data.token);
-        setPesan('pesan', 'Akun berhasil dibuat. Mengalihkan…', 'sukses');
         location.replace('beranda.html');
       } catch (err) {
         setPesan('pesan', err.message);
