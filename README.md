@@ -132,7 +132,7 @@ Arsitektur: `Browser -> Node.js (login, kuota, riwayat) -> Flask (inferensi AI)`
 ```
 livestockhealth-scan/
 ├── README.md
-├── frontend/      halaman HTML/CSS/JS (login, daftar, beranda, scan, hasil, riwayat)
+├── frontend/      halaman HTML/CSS/JS + aset (img/logo.png, img/favicon.png)
 ├── backend/       server Express (server.js), database (db.js), rekomendasi (rekomendasi.js), uji API (uji-api.mjs)
 ├── ai-service/    layanan Flask + pra-pemrosesan gambar (app.py)
 └── docs/          SRS, SDD, desain Figma, hasil testing, screenshot

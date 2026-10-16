@@ -94,7 +94,8 @@ svg { display: block; }
   position: relative;
   z-index: 2;
 }
-.logo { width: 24px; height: 28px; flex: 0 0 auto; }
+.logo { width: 30px; height: 30px; flex: 0 0 auto; }
+.logo img, [data-logo] img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .kunci-bilah {
   display: flex;
   flex-direction: column;

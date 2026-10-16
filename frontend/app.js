@@ -41,16 +41,25 @@ const IKON = (() => {
   };
 })();
 
-/* Logo merek (SVG inline supaya tidak bergantung file gambar). */
-const LOGO = '<svg viewBox="0 0 40 46" width="100%" height="100%" fill="none">' +
-  '<path d="M20 2C11.7 7.4 6 15 6 23.2 6 32.6 12.2 40.2 20 44c7.8-3.8 14-11.4 14-20.8C34 15 28.3 7.4 20 2Z" fill="#00673D"/>' +
-  '<path d="M20 12v22M20 20.5c0-4.4 3-7.5 8.5-7.5 0 5.4-3.4 8.5-8.5 7.5ZM20 27c-4.4 0-7.5-2.7-7.5-7.5 4.3 0 7.5 3 7.5 7.5Z" stroke="#FAFBF5" stroke-width="2" stroke-linecap="round"/></svg>';
+/* Logo merek & favicon (berkas gambar di folder img/). */
+const LOGO_SRC = 'img/logo.png';
+const FAVICON_SRC = 'img/favicon.png';
 
 /* ---------------------- Utilitas DOM ---------------------- */
 const el = (id) => document.getElementById(id);
 
 function pasangLogo() {
-  document.querySelectorAll('[data-logo]').forEach((n) => { n.innerHTML = LOGO; });
+  document.querySelectorAll('[data-logo]').forEach((n) => {
+    n.innerHTML = `<img src="${LOGO_SRC}" alt="Logo LivestockHealth Scan" />`;
+  });
+
+  let ikon = document.querySelector('link[rel="icon"]');
+  if (!ikon) {
+    ikon = document.createElement('link');
+    ikon.rel = 'icon';
+    document.head.appendChild(ikon);
+  }
+  ikon.href = FAVICON_SRC;
 }
 
 /* Isi elemen bertanda data-ikon="nama" dengan ikon yang sesuai. */
