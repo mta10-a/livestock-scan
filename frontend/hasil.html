@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hasil Analisis - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="navbar-atas">
+      <span class="logo" data-logo style="display:block;width:28px;height:32px"></span>
+      <span class="nama-merek">Hasil Analisis</span>
+      <span class="spacer"></span>
+      <span class="badge" id="badge-tanggal">–</span>
+    </header>
+
+    <main class="konten" id="konten">
+      <div class="loading"><div class="spinner"></div><p class="sedang teks-redup">Memuat hasil…</p></div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('scan');
+
+    function render(hasil) {
+      const s = spesiesInfo(hasil.spesies);
+      const rendah = (hasil.confidence ?? 0) < AMBANG_PERINGATAN;
+
+      const fitur = (hasil.fitur_visual || []).length
+        ? `<ul class="daftar-polos">${hasil.fitur_visual.map((f) => `<li>${f}</li>`).join('')}</ul>`
+        : '<p class="sedang teks-redup">Tidak ada catatan fitur visual.</p>';
+
+      const rek = hasil.rekomendasi || {};
+      const medis = (rek.medis || []).map((m) => `<li>${m}</li>`).join('');
+      const herbal = (rek.herbal || []).map((m) => `<li>${m}</li>`).join('');
+
+      el('konten').innerHTML = `
+        <div class="kartu hasil-atas">
+          <div class="ikon">${hasil.penyakit && /sehat/i.test(hasil.penyakit) ? '✅' : '🔬'}</div>
+          <div class="penyakit">${hasil.penyakit}</div>
+          <div class="spesies-label">${s.emoji} ${s.nama}</div>
+
+          <div style="margin-top:18px;text-align:left">
+            <div class="baris-antara">
+              <span class="sedang tebal">Tingkat Keyakinan</span>
+              <span class="sedang tebal" style="color:${rendah ? 'var(--merah)' : 'var(--hijau)'}">${persen(hasil.confidence)}</span>
+            </div>
+            <div class="bar ${kelasBar(hasil.confidence)}"><span style="width:${persen(hasil.confidence)}"></span></div>
+            <p class="kecil teks-redup" style="margin-top:6px">Keyakinan ${tingkatKeyakinan(hasil.confidence)} · model dummy v1</p>
+            ${hasil.kualitas_foto ? `<p class="kecil teks-redup" style="margin-top:2px">Foto ${hasil.kualitas_foto.lebar_asli}×${hasil.kualitas_foto.tinggi_asli} px dinormalisasi ke ${hasil.kualitas_foto.ukuran_model.join('×')} · kecerahan ${hasil.kualitas_foto.kecerahan} · kontras ${hasil.kualitas_foto.kontras}</p>` : ''}
+          </div>
+        </div>
+
+        ${rendah ? `<div class="peringatan merah">
+          ${IKON.peringatan}
+          <span><b>Keyakinan rendah.</b> Hasil di bawah ${persen(AMBANG_PERINGATAN)}. Ambil foto ulang dengan cahaya yang cukup,
+          lalu konsultasikan ke dokter hewan.</span>
+        </div>` : `<div class="peringatan">
+          ${IKON.peringatan}
+          <span>Hasil ini <b>indikasi awal</b>, bukan diagnosis pasti. Tetap konsultasikan ke dokter hewan.</span>
+        </div>`}
+
+        ${hasil.gejala ? `<div class="kartu" style="margin-top:12px">
+          <div class="judul-bagian" style="margin-top:0">Catatan Gejala</div>
+          <p class="sedang">${hasil.gejala}</p>
+        </div>` : ''}
+
+        <div class="kartu" style="margin-top:12px">
+          <div class="judul-bagian" style="margin-top:0">Fitur Visual Terdeteksi</div>
+          ${fitur}
+        </div>
+
+        <div class="kartu" style="margin-top:12px">
+          <div class="baris-antara">
+            <div class="judul-bagian" style="margin:0">Rekomendasi Obat Medis</div>
+            <span data-ikon="obat" style="display:block;width:18px;height:18px;color:var(--hijau)"></span>
+          </div>
+          <ul class="daftar-polos" style="margin-top:8px">${medis || '<li>Belum ada rekomendasi.</li>'}</ul>
+        </div>
+
+        <div class="kartu" style="margin-top:12px">
+          <div class="baris-antara">
+            <div class="judul-bagian" style="margin:0">Rekomendasi Jamu / Herbal</div>
+            <span data-ikon="herbal" style="display:block;width:18px;height:18px;color:#7a9e3f"></span>
+          </div>
+          <ul class="daftar-polos herbal" style="margin-top:8px">${herbal || '<li>Belum ada rekomendasi.</li>'}</ul>
+          <p class="kecil teks-redup" style="margin-top:8px">Herbal bersifat pendukung, bukan pengganti pengobatan medis.</p>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:20px">
+          <a class="tombol sekunder" href="riwayat.html">Lihat Riwayat</a>
+          <a class="tombol" href="scan.html">Scan Lagi</a>
+        </div>
+      `;
+
+      el('badge-tanggal').textContent = formatTanggal(hasil.created_at);
+      pasangIkon();
+      pasangLogo();
+    }
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+
+      const id = sessionStorage.getItem('hasil_id');
+      if (id) {
+        try {
+          const { hasil } = await api('/api/riwayat/' + id);
+          render(hasil);
+        } catch (err) {
+          el('konten').innerHTML = `<p class="pesan error">${err.message}</p>`;
+        }
+        return;
+      }
+
+      const hasil = ambilHasil();
+      if (!hasil) {
+        location.replace('scan.html');
+        return;
+      }
+      render(hasil);
+    })();
+  </script>
+</body>
+</html>

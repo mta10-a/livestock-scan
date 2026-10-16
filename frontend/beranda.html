@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beranda - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="navbar-atas">
+      <span class="logo" data-logo style="display:block;width:28px;height:32px"></span>
+      <span class="nama-merek">LivestockHealth</span>
+      <span class="spacer"></span>
+      <button class="tombol kecil abang" id="tombol-keluar" type="button">Keluar</button>
+    </header>
+
+    <main class="konten">
+      <h2 class="judul" id="sapaan">Halo, …</h2>
+      <p class="subjudul">Pantau kesehatan ternak Anda hari ini.</p>
+
+      <div class="statistik" style="margin-top:16px">
+        <div class="kartu">
+          <div class="angka" id="stat-scan">0</div>
+          <div class="label">Ternak Dipindai</div>
+        </div>
+        <div class="kartu">
+          <div class="angka" id="stat-kuota">–</div>
+          <div class="label">Scan Gratis Tersisa</div>
+        </div>
+      </div>
+
+      <div class="kartu" style="margin-top:12px;display:flex;gap:12px;align-items:center">
+        <div class="spacer">
+          <div class="tebal sedang">Lengkapi profil peternakan Anda</div>
+          <div class="kecil teks-redup">Tambah data ternak untuk pemantauan lebih akurat.</div>
+        </div>
+        <span class="segera">Segera</span>
+      </div>
+
+      <button class="tombol mtk" id="tombol-scan" type="button">
+        <span data-ikon="kamera" style="display:block;width:18px;height:18px"></span> Mulai Scan
+      </button>
+
+      <div class="judul-bagian">Pemeriksaan Terbaru</div>
+      <div id="pemeriksaan-terbaru"></div>
+
+      <div class="judul-bagian" id="wabah">Wabah di Sekitar Anda</div>
+      <div class="kartu">
+        <div class="wabah">
+          <div class="spacer">
+            <div class="sedang tebal">Penyakit Mulut dan Kuku (PMK)</div>
+            <div class="kota">Kab. Gunung Kidul</div>
+          </div>
+          <span class="badge">Terverifikasi</span>
+        </div>
+        <div class="wabah">
+          <div class="spacer">
+            <div class="sedang tebal">Lumpy Skin Disease (LSD)</div>
+            <div class="kota">Kab. Bogor</div>
+          </div>
+          <span class="badge">Terverifikasi</span>
+        </div>
+        <p class="kecil teks-redup" style="margin-top:10px">
+          Peta wabah interaktif belum tersedia pada prototype UTS (ditunda).
+        </p>
+      </div>
+
+      <div class="judul-bagian">Akses Cepat</div>
+      <div class="akses-cepat" id="akses-cepat"></div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('beranda');
+    pasangIkon();
+
+    el('tombol-keluar').addEventListener('click', keluar);
+
+    /* Akses cepat: hanya Riwayat Medis yang aktif di prototype UTS. */
+    const AKSES = [
+      { label: 'Riwayat Medis', ikon: IKON.riwayat, href: 'riwayat.html' },
+      { label: 'Konsultasi Dokter', ikon: IKON.dokumen },
+      { label: 'Peta Wabah', ikon: IKON.peta },
+      { label: 'E-Sertifikat', ikon: IKON.dokumen },
+      { label: 'Beli Token', ikon: IKON.token },
+      { label: 'Lapor Wabah', ikon: IKON.lapor },
+    ];
+    el('akses-cepat').innerHTML = AKSES.map((a) => a.href
+      ? `<a class="item" href="${a.href}">${a.ikon}<div>${a.label}</div></a>`
+      : `<div class="item nonaktif" onclick="belumTersedia('${a.label}')">${a.ikon}<div>${a.label}</div><div class="segera">Segera</div></div>`
+    ).join('');
+
+    function belumTersedia(nama) {
+      alert(`Fitur "${nama}" belum tersedia pada prototype UTS.`);
+    }
+
+    function kartuTerbaru(r) {
+      const s = spesiesInfo(r.spesies);
+      return `<button class="riwayat-item" onclick="bukaHasil(${r.id})">
+        <span class="emoji">${s.emoji}</span>
+        <span class="spacer">
+          <span class="nama" style="display:block">${r.penyakit}</span>
+          <span class="meta">${s.nama} · ${formatTanggal(r.created_at)}</span>
+        </span>
+        <span class="badge ${r.confidence >= AMBANG_PERINGATAN ? '' : 'abang'}">${persen(r.confidence)}</span>
+      </button>`;
+    }
+
+    function bukaHasil(id) {
+      sessionStorage.setItem('hasil_id', String(id));
+      location.href = 'hasil.html';
+    }
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+
+      el('sapaan').textContent = `Halo, ${me.nama.split(' ')[0]}`;
+      el('stat-scan').textContent = me.total_scan ?? 0;
+      el('stat-kuota').textContent = me.sisa_scan ?? 0;
+
+      try {
+        const { riwayat } = await api('/api/riwayat');
+        const wadah = el('pemeriksaan-terbaru');
+        if (!riwayat.length) {
+          wadah.innerHTML = `<div class="kosong"><div class="ikon">📋</div>
+            <p class="sedang">Belum ada pemeriksaan. Mulai scan pertama Anda!</p></div>`;
+        } else {
+          wadah.innerHTML = riwayat.slice(0, 3).map(kartuTerbaru).join('');
+        }
+      } catch (err) {
+        el('pemeriksaan-terbaru').innerHTML = `<p class="pesan error">${err.message}</p>`;
+      }
+    })();
+  </script>
+</body>
+</html>

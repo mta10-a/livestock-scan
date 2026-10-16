@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Masuk - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="konten tanpa-nav center">
+      <form class="kartu" id="form-masuk" style="width:100%" novalidate>
+        <div class="merek" style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+          <span class="logo" data-logo style="display:block;width:30px;height:34px"></span>
+          <span class="nama-merek" style="font-size:14px;font-weight:600;color:var(--hijau)">LivestockHealth Scan</span>
+        </div>
+
+        <h1 class="judul teks-tengah">Masuk ke Akun</h1>
+        <p class="subjudul teks-tengah" style="margin-bottom:14px">Selamat datang kembali</p>
+
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" placeholder="nama@gmail.com" autocomplete="email" required />
+
+        <label for="password">Kata Sandi</label>
+        <input id="password" name="password" type="password" placeholder="Kata sandi Anda" autocomplete="current-password" required />
+
+        <p class="pesan" id="pesan" role="alert"></p>
+
+        <button class="tombol mtk" id="tombol-masuk" type="submit">Masuk</button>
+
+        <div class="tautan">
+          <a href="#" onclick="lupaSandi();return false">Lupa Kata Sandi</a>
+          <a href="daftar.html">Daftar Akun</a>
+        </div>
+
+        <p class="kecil teks-tengah teks-redup" style="margin-top:18px">
+          Akun baru mendapat <b>3x scan gratis</b>.
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+
+    function lupaSandi() {
+      setPesan('pesan', 'Fitur lupa kata sandi belum tersedia pada prototype UTS.');
+    }
+
+    el('form-masuk').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setPesan('pesan', '');
+
+      const email = el('email').value.trim();
+      const password = el('password').value;
+
+      if (!email || !password) {
+        setPesan('pesan', 'Email dan kata sandi wajib diisi.');
+        return;
+      }
+
+      const tombol = el('tombol-masuk');
+      tombol.disabled = true;
+      tombol.textContent = 'Memproses…';
+
+      try {
+        const data = await api('/api/login', { method: 'POST', body: { email, password } });
+        setToken(data.token);
+        setPesan('pesan', 'Berhasil masuk. Mengalihkan…', 'sukses');
+        location.replace('beranda.html');
+      } catch (err) {
+        setPesan('pesan', err.message);
+      } finally {
+        tombol.disabled = false;
+        tombol.textContent = 'Masuk';
+      }
+    });
+  </script>
+</body>
+</html>

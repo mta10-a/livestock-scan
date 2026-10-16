@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="konten tanpa-nav center">
+      <div class="loading" style="width:100%">
+        <span class="logo" data-logo style="display:block;width:48px;height:56px;margin:0 auto 16px"></span>
+        <p class="sedang teks-redup">Memuat aplikasi…</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    // Beranda bila sudah punya token, jika belum arahkan ke halaman masuk.
+    setTimeout(() => {
+      location.replace(getToken() ? 'beranda.html' : 'login.html');
+    }, 400);
+  </script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+# Node
+node_modules/
+npm-debug.log*
+
+# Database SQLite (dibuat otomatis saat server jalan)
+backend/data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
