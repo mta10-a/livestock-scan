@@ -49,7 +49,7 @@
           <span class="baris-judul">${r.penyakit}</span>
           <span class="baris-meta">${spesiesInfo(r.spesies).nama} · ${formatTanggal(r.created_at)}</span>
         </span>
-        <span class="pil ${kelasPil(r.confidence)}">${persen(r.confidence)}</span>
+        <span class="pil ${kelasPil(r.confidence, r.penyakit)}">${persen(r.confidence)}</span>
         <span class="chevron" data-ikon="chevron"></span>
       </button>`;
     }

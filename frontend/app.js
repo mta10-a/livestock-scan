@@ -37,6 +37,7 @@ const IKON = (() => {
     token: bungkus('<circle cx="12" cy="12" r="8"/><path d="M12 7.8v8.4M9.4 10.4h5.2M9.4 13.6h5.2"/>'),
     lapor: bungkus('<path d="M6 20.4V4.4"/><path d="M6 5.2h9.6l-1.4 3 1.4 3H6"/>'),
     peringatan: bungkus('<path d="M12 4.4 3.2 19.6h17.6L12 4.4Z"/><path d="M12 10v4.2M12 16.9h.01"/>'),
+    cek: bungkus('<circle cx="12" cy="12" r="8.4"/><path d="m8.3 12.3 2.5 2.5 4.9-5.2"/>'),
     chevron: bungkus('<path d="m9.5 6.5 5.5 5.5-5.5 5.5"/>'),
     kosong: bungkus('<path d="M4 12.6 6.6 5.4A1.4 1.4 0 0 1 8 4.5h8a1.4 1.4 0 0 1 1.4.9L20 12.6v5.6a1.4 1.4 0 0 1-1.4 1.4H5.4A1.4 1.4 0 0 1 4 18.2Z"/><path d="M4 12.6h4.4l1 2.2h5.2l1-2.2H20"/>'),
   };
@@ -175,17 +176,26 @@ function tingkatKeyakinan(x) {
 }
 
 /* Skala warna keyakinan.
-   Makin RENDAH makin hijau, makin TINGGI (makin gawat) makin merah. */
+   Makin RENDAH makin hijau, makin TINGGI (makin gawat) makin merah.
+   Catatan: bila hasilnya "Sehat", temuannya tidak berbahaya, jadi warnanya
+   tetap hijau walau keyakinannya tinggi. */
 const WARNA_SKALA = { rendah: 'hijau', sedang: 'kuning', tinggi: 'merah' };
 
+const KELAS_SEHAT = 'Sehat';
+const hasilnyaSehat = (penyakit) => penyakit === KELAS_SEHAT;
+
 /* Kelas warna untuk donat keyakinan ('' = warna bawaan CSS, yaitu hijau). */
-function kelasBar(x) {
+function kelasBar(x, penyakit) {
+  if (hasilnyaSehat(penyakit)) return '';
   const tingkat = tingkatKeyakinan(x);
   return tingkat === 'rendah' ? '' : tingkat;
 }
 
 /* Kelas warna untuk pil persen. */
-const kelasPil = (x) => WARNA_SKALA[tingkatKeyakinan(x)];
+function kelasPil(x, penyakit) {
+  if (hasilnyaSehat(penyakit)) return 'hijau';
+  return WARNA_SKALA[tingkatKeyakinan(x)];
+}
 
 const spesiesInfo = (kode) => SPESIES[kode] || { nama: kode || '-', penyakit: [] };
 
