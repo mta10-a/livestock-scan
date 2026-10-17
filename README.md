@@ -158,6 +158,9 @@ node server.js           # berjalan di http://localhost:3000
 # Alternatif: buka folder frontend di VS Code, klik kanan login.html, Open with Live Server.
 ```
 
+Panduan lengkap (menjalankan, uji otomatis, uji manual langkah demi langkah, reset data,
+dan daftar masalah umum): **[docs/cara-menjalankan-dan-testing.md](docs/cara-menjalankan-dan-testing.md)**
+
 ## 10. Endpoint API
 
 | Endpoint | Fungsi | RF |
@@ -190,7 +193,8 @@ temuan paling kuat (perlu penanganan segera) dan hijau berarti hasil masih merag
 
 ## 12. Pengujian
 
-Test case ada pada dokumen kuis (TC-F01 s.d. TC-F20).
+Test case ada pada dokumen kuis (TC-F01 s.d. TC-F20). Langkah menjalankan dan checklist
+uji manual ada di **[docs/cara-menjalankan-dan-testing.md](docs/cara-menjalankan-dan-testing.md)**.
 
 **Hasil pengujian otomatis:** 36 pemeriksaan, 36 lulus, 0 gagal. Rincian lengkap ada di
 `docs/hasil-testing.md`. Skrip pengujian: `backend/uji-api.mjs` (jalankan dengan `node uji-api.mjs`
