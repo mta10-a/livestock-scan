@@ -61,7 +61,7 @@
           </div>
 
           <div class="penyakit">${hasil.penyakit}</div>
-          <div class="meta-hasil">${s.nama} · keyakinan ${tingkat} · model dummy v1</div>
+          <div class="meta-hasil">${s.nama} · keyakinan ${tingkat} · ${hasil.model || 'model tidak tercatat'}</div>
 
           ${kf ? `<p class="kecil teks-redup" style="margin-top:12px">
             Foto ${kf.lebar_asli}×${kf.tinggi_asli} px dinormalisasi ke ${kf.ukuran_model.join('×')} ·
@@ -90,7 +90,7 @@
           <div class="bagian"><span class="label-kecil">Catatan gejala</span></div>
           <div class="kartu"><p class="sedang">${hasil.gejala}</p></div>` : ''}
 
-        <div class="bagian"><span class="label-kecil">Fitur visual terdeteksi</span></div>
+        <div class="bagian"><span class="label-kecil">Ciri khas kelas terpilih</span></div>
         <div class="kartu"><ul class="daftar">${fitur || '<li>Tidak ada catatan.</li>'}</ul></div>
 
         <div class="bagian"><span class="label-kecil">Penanganan medis</span></div>

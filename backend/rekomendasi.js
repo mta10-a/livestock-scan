@@ -79,6 +79,65 @@ const REKOMENDASI = {
       'Air perasan daun mengkudu sebagai penambah imun.',
     ],
   },
+  'Sehat': {
+    medis: [
+      'Tidak ada tanda penyakit luar yang menonjol pada foto. Lanjutkan pemeriksaan rutin.',
+      'Jaga jadwal vaksinasi dan pemberian obat cacing sesuai anjuran dokter hewan.',
+      'Bersihkan kandang, alas tidur, dan tempat pakan secara berkala.',
+      'Pastikan pakan bergizi dan air minum selalu bersih.',
+      'Pisahkan ternak baru selama beberapa hari sebelum digabung ke kawanan.',
+    ],
+    herbal: [
+      'Air rebusan kunyit + temulawak untuk menjaga daya tahan tubuh.',
+      'Bawang putih halus dicampur air minum sebagai antibakteri alami.',
+      'Cukupi hijauan segar dan mineral agar ternak tetap sehat.',
+    ],
+  },
+  'Tetelo (Newcastle Disease)': {
+    medis: [
+      'Pisahkan ayam sakit segera; tetelo sangat menular dan berakibat fatal.',
+      'Laporkan ke Dinas Peternakan setempat karena tetelo wajib lapor.',
+      'Vaksinasi ND pada kawanan yang masih sehat sesuai anjuran petugas.',
+      'Desinfeksi kandang, tempat pakan, dan tempat minum.',
+      'Berikan vitamin dan elektrolit untuk menopang kondisi ayam.',
+      'Buang dan musnahkan bangkai dengan cara yang benar, jangan dijual.',
+    ],
+    herbal: [
+      'Air rebusan temulawak untuk membantu daya tahan tubuh.',
+      'Bawang putih halus dicampur air minum sebagai antibakteri alami.',
+      'Jaga kandang tetap hangat dan tidak lembap.',
+    ],
+  },
+  'Salmonellosis': {
+    medis: [
+      'Pisahkan ayam sakit dari kawanan.',
+      'Berikan antibiotik sesuai resep dokter hewan, jangan asal dosis.',
+      'Bersihkan dan desinfeksi tempat pakan serta tempat minum setiap hari.',
+      'Ganti alas kandang dan jaga kandang tetap kering.',
+      'Salmonellosis dapat menular ke manusia: cuci tangan setelah menangani ternak.',
+    ],
+    herbal: [
+      'Bawang putih halus dicampur air minum sebagai antibakteri alami.',
+      'Air rebusan kunyit untuk membantu menjaga nafsu makan.',
+      'Air perasan daun mengkudu sebagai penambah imun.',
+    ],
+  },
+  'Gangguan Kulit (Scabies/Orf)': {
+    medis: [
+      'Isolasi ternak yang kulitnya terserang agar tidak menular ke kawanan.',
+      'Bersihkan keropeng dan luka dengan larutan antiseptik.',
+      'Mandikan dengan larutan akarisida sesuai dosis dokter hewan bila diduga scabies.',
+      'Beri salep atau antibiotik pada luka bila sudah ada infeksi sekunder.',
+      'Bersihkan kandang serta alas tidur dan ganti secara berkala.',
+      'Ulangi pengobatan sesuai jadwal yang dianjurkan dokter hewan.',
+    ],
+    herbal: [
+      'Oleskan campuran belerang halus + minyak kelapa pada kulit yang terserang.',
+      'Air rebusan daun sirih atau tembakau untuk memandikan ternak.',
+      'Minyak kelapa murni untuk melembapkan kulit yang bersisik.',
+      'Madu dioleskan tipis pada luka sebagai antiseptik alami.',
+    ],
+  },
 };
 
 const DEFAULT_REKOMENDASI = {

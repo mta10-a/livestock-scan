@@ -2,7 +2,7 @@
 
 **Proyek:** LivestockHealth Scan
 **Penyusun:** Mutia Rahmawati (11241065)
-**Tanggal pengujian:** 16 Oktober 2026
+**Tanggal pengujian:** 17 Oktober 2026
 **Metode:** pengujian otomatis melalui skrip `backend/uji-api.mjs` (memanggil REST API secara langsung)
 
 ## Lingkungan pengujian
@@ -11,18 +11,20 @@
 |---|---|
 | Sistem operasi | Windows |
 | Node.js | v26.12.0 |
-| Python | 3.13.7 |
+| Python | 3.11.9 (virtual environment `ai-service/.venv-mediapipe`) |
 | Flask | 3.1.3 |
+| MediaPipe | 1.1.1 (EfficientNet-Lite0, pengekstrak fitur) |
+| Model | hasil latihan sendiri: `efficientnet-lite0+softmax-<spesies>-v1` |
 | Basis data | SQLite (modul bawaan `node:sqlite`) |
-| Tanggal | 16 Oktober 2026 |
+| Tanggal | 17 Oktober 2026 |
 
 ## Cara menjalankan ulang
 
 ```bash
-# Terminal 1 - layanan AI (dummy)
+# Terminal 1 - layanan AI (model nyata)
 cd ai-service
-pip install -r requirements.txt
-python app.py                 # http://localhost:5000
+.venv-mediapipe\Scripts\python.exe -m pip install -r requirements.txt
+.venv-mediapipe\Scripts\python.exe app.py      # http://localhost:5000
 
 # Terminal 2 - backend
 cd backend
@@ -43,8 +45,8 @@ temp) lalu mematikannya lagi, sehingga pengujian tidak bergantung proses lain.
 
 | Keterangan | Jumlah |
 |---|---|
-| Total pemeriksaan | 36 |
-| Lulus | 36 |
+| Total pemeriksaan | 38 |
+| Lulus | 38 |
 | Gagal | 0 |
 
 ## Rincian pemeriksaan
@@ -100,6 +102,8 @@ temp) lalu mematikannya lagi, sehingga pengujian tidak bergantung proses lain.
 | Kuota habis tepat setelah 3x scan | Lulus |
 | Pra-pemrosesan (RF-08) menghasilkan ukuran model 224x224 | Lulus |
 | Kecerahan & kontras dihitung dari piksel foto (RF-10) | Lulus |
+| Model yang dipakai adalah model nyata, bukan dummy (RF-09/RF-11) | Lulus |
+| Penyakit yang dikembalikan termasuk kelas yang dikenal model | Lulus |
 | Scan sapi, kambing, dan ayam berhasil | Lulus |
 
 ### Riwayat medis (RF-18)
@@ -126,7 +130,10 @@ temp) lalu mematikannya lagi, sehingga pengujian tidak bergantung proses lain.
 
 ## Catatan
 
-- Model AI masih **dummy** (lihat `ai-service/app.py`). Kontrak API sudah final sehingga
-  penggantian model asli tidak mengubah backend maupun frontend.
+- Model AI yang diuji adalah **model nyata hasil latihan sendiri** (EfficientNet-Lite0 sebagai
+  pengekstrak fitur + classifier softmax). Akurasi uji: sapi 69,2%, kambing 91,6%, ayam 78,0%.
+  Rincian lengkap beserta keterbatasannya ada di `docs/dataset-dan-model.md`.
+- Pengujian di atas menguji **kontrak API** dan **aturan bisnis**, bukan ketepatan diagnosis.
+  Ketepatan diagnosis diukur terpisah pada data uji dan dilaporkan apa adanya.
 - Pengujian antarmuka (klik alur daftar -> login -> scan -> hasil -> riwayat) dilakukan
   secara manual dan didokumentasikan melalui screenshot pada video presentasi.

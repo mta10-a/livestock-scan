@@ -4,11 +4,14 @@ Aplikasi berbasis AI untuk membantu peternak lokal di Indonesia mendeteksi dini 
 
 - **Penyusun:** Mutia Rahmawati (11241065)
 - **Mata kuliah:** IPPL (Tugas Besar)
-- **Tahap saat ini:** Prototype UTS selesai — **17 dari 17 RF direncanakan berjalan (42,5%)**
+- **Tahap saat ini:** Prototype UTS selesai — **17 dari 40 RF berjalan (42,5%)**
 
-> **Catatan jujur:** alur aplikasi (registrasi, login, scan, hasil, riwayat, kuota) sudah berjalan
-> penuh. Namun **model klasifikasi penyakit masih dummy**; pra-pemrosesan gambar dan evaluasi
-> kualitas foto sudah memakai gambar sungguhan. Model AI asli dikerjakan setelah UTS.
+> **Catatan jujur:** alur aplikasi (registrasi, login, scan, hasil, riwayat, kuota) berjalan penuh.
+> **Model klasifikasi penyakit sudah model nyata** yang dilatih dari dataset ternak — bukan dummy.
+> Modelnya tersusun dari EfficientNet-Lite0 (terlatih ImageNet, dibekukan) sebagai pengekstrak fitur
+> ditambah classifier softmax hasil latihan sendiri. Akurasi dan keterbatasan dataset dilaporkan apa
+> adanya di **[docs/dataset-dan-model.md](docs/dataset-dan-model.md)**.
+> Bila berkas model belum ada, layanan AI otomatis kembali ke mode dummy agar aplikasi tetap dapat diuji.
 
 ---
 
@@ -39,7 +42,8 @@ Prototype UTS hanya mengerjakan peran **Peternak**.
 ## 4. Cakupan Produk
 
 **Mendeteksi:** penyakit luar/fisik (kulit dan tampak visual).
-**Spesies dan penyakit:** Sapi (PMK, LSD), Kambing (Scabies, Orf), Ayam (Coccidiosis).
+**Spesies dan kelas yang dikenali model:**
+Sapi (Sehat, LSD, PMK) · Kambing (Sehat, Gangguan Kulit Scabies/Orf) · Ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
 
 **Batasan:**
 - Hasil AI adalah indikasi awal, bukan diagnosis pasti.
@@ -52,7 +56,7 @@ Prototype UTS hanya mengerjakan peran **Peternak**.
 
 Sumber: dokumen SRS. Status diperbarui seiring pengerjaan.
 
-**Legenda:** Selesai | Selesai (model dummy) | Ditunda
+**Legenda:** Selesai | Selesai (model nyata) | Ditunda
 
 | ID | Fitur | Prioritas | Status |
 |---|---|---|---|
@@ -64,9 +68,9 @@ Sumber: dokumen SRS. Status diperbarui seiring pengerjaan.
 | RF-06 | Ambil/unggah foto ternak | UTS | Selesai |
 | RF-07 | Validasi data dan hak akses scan | UTS | Selesai |
 | RF-08 | Pra-pemrosesan gambar | UTS | Selesai |
-| RF-09 | Pemilihan model AI per spesies | UTS | Selesai (model dummy) |
-| RF-10 | Ekstraksi dan evaluasi fitur visual | UTS | Selesai (model dummy) |
-| RF-11 | Klasifikasi penyakit berdasarkan pola | UTS | Selesai (model dummy) |
+| RF-09 | Pemilihan model AI per spesies | UTS | Selesai (model nyata) |
+| RF-10 | Ekstraksi dan evaluasi fitur visual | UTS | Selesai (model nyata) |
+| RF-11 | Klasifikasi penyakit berdasarkan pola | UTS | Selesai (model nyata) |
 | RF-12 | Tampilkan akurasi (confidence) | UTS | Selesai |
 | RF-13 | Peringatan akurasi rendah | UTS | Selesai |
 | RF-14 | Rekomendasi obat medis | UTS | Selesai |
@@ -121,7 +125,7 @@ Aturan kuota: setiap akun baru mendapat 3x scan gratis. Scan yang gagal diproses
 |---|---|
 | Frontend | HTML, CSS, JavaScript (tampilan mobile) |
 | Backend | Node.js + Express, SQLite (`node:sqlite` bawaan Node), bcryptjs, JWT, multer |
-| AI Service | Python (Flask) + Pillow untuk pra-pemrosesan gambar; model klasifikasi masih dummy; rencana MediaPipe Model Maker (image classification) |
+| AI Service | Python (Flask) + Pillow (pra-pemrosesan) + MediaPipe (EfficientNet-Lite0 sebagai pengekstrak fitur) + classifier softmax hasil latihan sendiri di `latih.py` |
 | Pengujian | Skrip Node.js (`backend/uji-api.mjs`) untuk uji otomatis REST API |
 | Desain | Figma |
 
@@ -134,19 +138,21 @@ livestockhealth-scan/
 ├── README.md
 ├── frontend/      halaman HTML/CSS/JS + aset (img/logo.png, img/favicon.png)
 ├── backend/       server Express (server.js), database (db.js), rekomendasi (rekomendasi.js), uji API (uji-api.mjs)
-├── ai-service/    layanan Flask + pra-pemrosesan gambar (app.py)
-└── docs/          SRS, SDD, desain Figma, hasil testing, screenshot
+├── ai-service/    layanan Flask (app.py), skrip pelatihan (latih.py), model hasil latih (model/*.npz)
+└── docs/          SRS, SDD, desain Figma, hasil testing, penjelasan dataset & model
 ```
+
+Model dilatih dari dataset di folder `IPPL dataset` (di luar repository, 575 MB).
 
 ## 9. Cara Menjalankan
 
-Prasyarat: Node.js (minimal 22.5, karena memakai modul `node:sqlite`; diuji pada v26), Python 3.10+.
+Prasyarat: Node.js (minimal 22.5, karena memakai modul `node:sqlite`; diuji pada v26), Python 3.11+.
 
 ```bash
 # 1. AI service (terminal 1)
 cd ai-service
-pip install -r requirements.txt
-python app.py            # berjalan di http://localhost:5000
+.venv-mediapipe\Scripts\python.exe -m pip install -r requirements.txt   # sekali di komputer baru
+.venv-mediapipe\Scripts\python.exe app.py        # berjalan di http://localhost:5000
 
 # 2. Backend (terminal 2)
 cd backend
@@ -158,8 +164,17 @@ node server.js           # berjalan di http://localhost:3000
 # Alternatif: buka folder frontend di VS Code, klik kanan login.html, Open with Live Server.
 ```
 
-Panduan lengkap (menjalankan, uji otomatis, uji manual langkah demi langkah, reset data,
-dan daftar masalah umum): **[docs/cara-menjalankan-dan-testing.md](docs/cara-menjalankan-dan-testing.md)**
+Cara cepat tanpa terminal: klik dua kali `ai-service\jalankan-ai.bat` dan
+`backend\jalankan-backend.bat`.
+
+Bila virtual environment belum ada, buat sekali dengan:
+`py -3.11 -m venv .venv-mediapipe`.
+
+Panduan lengkap (menjalankan, uji otomatis, uji manual langkah demi langkah, melatih ulang
+model, reset data, dan daftar masalah umum): **[docs/cara-menjalankan-dan-testing.md](docs/cara-menjalankan-dan-testing.md)**
+
+Penjelasan dataset, cara penyaringan gambar, akurasi nyata, dan keterbatasan model:
+**[docs/dataset-dan-model.md](docs/dataset-dan-model.md)**
 
 ## 10. Endpoint API
 
@@ -196,7 +211,7 @@ temuan paling kuat (perlu penanganan segera) dan hijau berarti hasil masih merag
 Test case ada pada dokumen kuis (TC-F01 s.d. TC-F20). Langkah menjalankan dan checklist
 uji manual ada di **[docs/cara-menjalankan-dan-testing.md](docs/cara-menjalankan-dan-testing.md)**.
 
-**Hasil pengujian otomatis:** 36 pemeriksaan, 36 lulus, 0 gagal. Rincian lengkap ada di
+**Hasil pengujian otomatis:** 38 pemeriksaan, 38 lulus, 0 gagal. Rincian lengkap ada di
 `docs/hasil-testing.md`. Skrip pengujian: `backend/uji-api.mjs` (jalankan dengan `node uji-api.mjs`
 selagi AI service dan backend berjalan).
 
@@ -209,6 +224,8 @@ Yang sudah terverifikasi antara lain:
 - Scan ke-4 ditolak dengan pesan "Kuota gratis habis".
 - **Layanan AI mati: scan gagal (502) dan kuota tidak berkurang.**
 - Riwayat hanya menampilkan data milik pengguna yang login.
+- **Model yang dipakai adalah model nyata** (hasil latih, bukan dummy), dan
+  penyakit yang dikembalikan termasuk kelas yang dikenal model.
 
 ## 13. Tautan
 
@@ -218,7 +235,9 @@ Yang sudah terverifikasi antara lain:
 
 ## 14. Rencana Setelah UTS
 
-1. Latih model AI asli per spesies (MediaPipe Model Maker, dataset Kaggle/Roboflow) untuk menggantikan model dummy.
+1. Perbaiki dataset sapi (buang poster/ilustrasi kelas LSD secara manual) dan tambah data kambing
+   berlabel penyakit spesifik (Scabies vs Orf) agar model bisa membedakan keduanya; latih ulang
+   dengan lebih banyak data dan augmentasi.
 2. Pembelian token dan integrasi Payment Gateway.
 3. Konsultasi dokter hewan (Tele-Vet) dan e-sertifikat.
 4. Peta wabah dan pelaporan wabah.

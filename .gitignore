@@ -13,6 +13,9 @@ venv/
 # Lingkungan khusus MediaPipe (Python 3.11) - dibuat manual, tidak ikut di-commit
 ai-service/.venv-mediapipe/
 
+# Cache embedding hasil latih (dihitung ulang otomatis oleh latih.py)
+ai-service/model/.cache/
+
 # Editor / OS
 .vscode/
 .idea/

@@ -164,6 +164,16 @@ async function main() {
   cek('RF-16 penurunan kuota 3 -> 2', r.data.sisa_scan === 2, String(r.data.sisa_scan));
   cek('RF-08 pra-pemrosesan -> ukuran model 224x224', r.data.hasil?.kualitas_foto?.ukuran_model?.[0] === 224, JSON.stringify(r.data.hasil?.kualitas_foto));
   cek('RF-10 kecerahan & kontras dihitung dari foto', typeof r.data.hasil?.kualitas_foto?.kecerahan === 'number' && typeof r.data.hasil?.kualitas_foto?.kontras === 'number');
+  cek(
+    'RF-09/RF-11 model NYATA dipakai (bukan dummy)',
+    typeof r.data.hasil?.model === 'string' && r.data.hasil.model.includes('efficientnet'),
+    String(r.data.hasil?.model)
+  );
+  cek(
+    'RF-11 penyakit termasuk kelas yang dikenal model',
+    ['Sehat', 'Lumpy Skin Disease (LSD)', 'Penyakit Mulut dan Kuku (PMK)'].includes(r.data.hasil?.penyakit),
+    String(r.data.hasil?.penyakit)
+  );
   const idHasil = r.data.hasil?.id;
 
   /* ---------- TC-F05 Riwayat ---------- */

@@ -70,7 +70,8 @@ Ditunda (tampil abu-abu "segera" di aplikasi):
 --------------------------------------------------------------
 Frontend   : HTML, CSS, JavaScript (tampilan mobile)
 Backend    : Node.js + Express, SQLite, bcrypt, JWT, multer
-AI Service : Python (Flask), model DUMMY untuk UTS
+AI Service : Python (Flask) + Pillow + MediaPipe (EfficientNet-Lite0)
+             + classifier hasil latihan sendiri dari dataset ternak
 Desain     : Figma
 Alur       : Browser -> Node.js -> Flask -> Node.js -> Browser
 
@@ -91,10 +92,12 @@ Aturan penting:
 [ ] Prototype Figma diklik/dihubungkan antar frame
 [x] HTML/CSS halaman lain (daftar, beranda, scan, hasil,
     riwayat)
-[x] Flask dummy
+[x] Layanan AI Flask (bukan dummy)
+[x] Model AI dilatih dari dataset ternak sendiri
+    (EfficientNet-Lite0 + classifier softmax; 10.156 gambar)
 [x] Backend Express + SQLite
 [x] Frontend tersambung ke backend
-[x] Testing otomatis API (36/36 lulus, docs/hasil-testing.md)
+[x] Testing otomatis API (38/38 lulus, docs/hasil-testing.md)
 [ ] Screenshot desain Figma dan aplikasi berjalan
 [x] README final
 [ ] Video presentasi
@@ -102,9 +105,16 @@ Aturan penting:
 [ ] Push final ke GitHub
 
 RF selesai saat ini : 17 dari 40 RF (42,5%)
-  - 14 RF berjalan penuh
-  - 3 RF (RF-09, RF-10, RF-11) berjalan dengan model AI dummy
+  - 17 RF berjalan penuh, termasuk klasifikasi dengan model AI nyata
   - 23 RF sisanya ditunda sesuai rencana
+
+Catatan akurasi model (diukur pada data uji, bukan dikarang):
+  - Sapi    : 69,2%  (LSD paling lemah, 58,5% - banyak gambar poster
+             dan ilustrasi pada dataset publiknya)
+  - Kambing : 91,6%  (dataset hanya memisahkan sehat/tidak sehat,
+             jadi kelasnya dinamai jujur "Gangguan Kulit (Scabies/Orf)")
+  - Ayam    : 78,0%
+  Rincian: docs/dataset-dan-model.md
 
 
 6. RENCANA KERJA DAN CHECKLIST
@@ -130,9 +140,13 @@ TARGET 3 - HTML/CSS 6 halaman (maks 5-6 jam)
 [x] hasil.html
 [x] Tampilan dirapikan (lihat catatan desain di README), commit
 
-TARGET 4 - Flask dummy (1 jam)
+TARGET 4 - Layanan AI (Flask)
 [x] Endpoint /predict mengembalikan penyakit + confidence
 [x] Input salah ditolak (400)
+[x] Model nyata: EfficientNet-Lite0 + classifier softmax
+    (latih.py, 10.156 gambar, 686 detik di CPU)
+[x] Penyaringan gambar tidak layak sebelum melatih
+[x] Kalibrasi keyakinan (temperature scaling)
 
 TARGET 5 - Backend: register dan login
 [x] Tabel users dan riwayat
@@ -163,6 +177,8 @@ TARGET 9 - Video presentasi (3-5 menit)
 [ ] Demo: daftar, login, scan, hasil, riwayat
 [ ] Demo kuota habis
 [ ] Tabel progres RF (sebut persentase) dan rencana lanjut
+[ ] Sebutkan akurasi model apa adanya + keterbatasan datasetnya
+    (docs/dataset-dan-model.md)
 
 TARGET 10 - Pengumpulan
 [ ] Unggah video ke YouTube (Unlisted jika diizinkan)
@@ -184,8 +200,8 @@ Senin 19 Okt  : Cadangan dan perbaikan (batas 23.59)
 --------------------------------------------------------------
 - Waktu mepet           -> korbankan kerapian tampilan dan model
                            AI asli, bukan alur inti.
-- Model AI belum siap   -> pakai dummy dan jelaskan jujur di
-                           video dan README.
+- Dataset publik kotor  -> saring otomatis + laporkan akurasi apa
+                           adanya, jangan menutupi kelemahannya.
 - Video lama diproses   -> unggah paling lambat Minggu malam.
 - Commit menumpuk       -> commit setiap satu fitur selesai.
 - Link tidak bisa dibuka-> uji lewat jendela incognito.

@@ -3,7 +3,7 @@
 Panduan singkat untuk menjalankan prototype dan mengulang pengujiannya.
 Ditulis supaya tidak perlu mengingat-ingat lagi.
 
-**Prasyarat:** Node.js minimal 22.5 (diuji pada v26) dan Python 3.10+.
+**Prasyarat:** Node.js minimal 22.5 (diuji pada v26) dan Python 3.11+.
 Dependensi sudah terpasang di mesin ini; kalau pindah komputer, lihat langkah
 `npm install` dan `pip install` di bawah.
 
@@ -11,20 +11,33 @@ Dependensi sudah terpasang di mesin ini; kalau pindah komputer, lihat langkah
 
 ## 1. Menjalankan aplikasi (butuh 2 terminal)
 
+Cara paling cepat: klik dua kali **`ai-service\jalankan-ai.bat`** dan
+**`backend\jalankan-backend.bat`**. Langkah manualnya di bawah ini.
+
 ### Terminal 1 — layanan AI (Flask, port 5000)
 
 ```bash
 cd ai-service
-pip install -r requirements.txt   # hanya sekali di komputer baru
-python app.py
+.venv-mediapipe\Scripts\python.exe app.py
+```
+
+Kalau virtual environment belum ada (komputer baru):
+
+```bash
+py -3.11 -m venv .venv-mediapipe
+.venv-mediapipe\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 Tanda berhasil:
 
 ```
-[ai-service] pra-pemrosesan gambar: PIL aktif, masukan (224, 224)
-[ai-service] model klasifikasi DUMMY berjalan di http://localhost:5000
+[ai-service] model NYATA aktif: ayam, kambing, sapi
+[ai-service]   sapi     -> Lumpy Skin Disease (LSD), Penyakit Mulut dan Kuku (PMK), Sehat, akurasi uji 69.2%
+[ai-service] berjalan di http://localhost:5000
 ```
+
+Kalau berbunyi `mode DUMMY`, berarti `ai-service/model/*.npz` belum ada —
+jalankan dulu `latih.py` (bagian 6).
 
 ### Terminal 2 — backend (Express, port 3000)
 
@@ -77,7 +90,7 @@ Urutannya sengaja begini supaya video presentasi bisa direkam sekali jalan.
 | 5 | Unggah foto **bukan JPG/PNG** (mis. `.txt`) | Ditolak, pesan "Format foto harus JPG atau PNG" |
 | 6 | Unggah foto **lebih dari 5 MB** | Ditolak, pesan "Ukuran foto melebihi 5 MB" |
 | 7 | Unggah foto JPG asli → Analisis | Proses berjalan, lalu pindah ke Hasil |
-| 8 | Halaman Hasil | Donat keyakinan, penyakit, fitur visual, obat medis, herbal |
+| 8 | Halaman Hasil | Donat keyakinan, penyakit, ciri khas kelas, obat medis, herbal |
 | 9 | Klik **Riwayat** | 1 data tersimpan, pil persen berwarna |
 | 10 | Scan lagi sampai kuota habis (total 3x) | Sisa scan 3 → 2 → 1 → 0 |
 | 11 | Scan ke-4 | Ditolak: "Kuota gratis habis", kuota tidak berkurang |
@@ -115,7 +128,32 @@ Berguna sebelum rekaman video supaya mulai dari nol.
 |---|---|
 | Halaman tidak mau dibuka | Backend belum jalan (port 3000) |
 | Scan gagal, pesan 502 | Flask belum jalan atau mati (port 5000) |
+| Flask bilang `mode DUMMY` | Berkas `ai-service/model/*.npz` belum ada → lihat bagian 6 |
 | "Kuota gratis habis" padahal baru daftar | Data lama masih ada → kosongkan `backend/data/` |
 | Tampilan tidak berubah setelah diedit | Cache browser → `Ctrl + Shift + R` |
 | Port sudah dipakai | Cari prosesnya: `Get-NetTCPConnection -LocalPort 3000` |
 | `node:sqlite` tidak ditemukan | Node.js terlalu tua, minimal versi 22.5 |
+| Flask tidak mau jalan: `No module named 'mediapipe'` | Dipanggil dengan Python yang salah. Pakai `.venv-mediapipe\Scripts\python.exe app.py` |
+
+---
+
+## 6. Melatih ulang model (kalau perlu)
+
+Model yang dipakai aplikasi dilatih dari folder `..\..\IPPL dataset`.
+
+```bash
+cd ai-service
+.venv-mediapipe\Scripts\python.exe latih.py --periksa   # cek kebersihan dataset
+.venv-mediapipe\Scripts\python.exe latih.py             # latih semua spesies
+```
+
+Hasilnya:
+
+- `ai-service/model/sapi.npz`, `kambing.npz`, `ayam.npz` → berkas model
+- `ai-service/model/metadata.json` → akurasi uji, recall per kelas, laporan penyaringan
+- `ai-service/model/.cache/` → simpanan embedding (supaya latih ulang cepat)
+
+Setelah itu, **restart Flask** supaya model baru dimuat.
+
+Penjelasan lengkap dataset, cara penyaringan, dan keterbatasannya ada di
+`docs/dataset-dan-model.md`.

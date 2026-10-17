@@ -36,10 +36,17 @@ db.exec(`
     peringatan   INTEGER NOT NULL DEFAULT 0,
     gejala       TEXT,
     fitur_visual TEXT,
+    model        TEXT,
     created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
   );
 
   CREATE INDEX IF NOT EXISTS idx_riwayat_user ON riwayat(user_id, id DESC);
 `);
+
+/* Migrasi ringan: database lama mungkin belum punya kolom `model`. */
+const kolomRiwayat = db.prepare('PRAGMA table_info(riwayat)').all().map((k) => k.name);
+if (!kolomRiwayat.includes('model')) {
+  db.exec('ALTER TABLE riwayat ADD COLUMN model TEXT');
+}
 
 module.exports = { db, DIR_DATA };

@@ -1,99 +1,181 @@
 """
-LivestockHealth Scan - AI Service (prototype UTS)
-=================================================
-PENTING: Ini masih MODEL DUMMY untuk klasifikasi penyakit, bukan model AI asli.
-Namun pra-pemrosesan gambar (RF-08) dan evaluasi kondisi foto (RF-10)
-SUDAH memakai gambar sungguhan (Pillow), sehingga hasil benar-benar
-terpengaruh isi foto. Model asli (klasifikasi gambar) menyusul setelah UTS.
+LivestockHealth Scan - AI Service
+=================================
+
+Alur kerja yang sebenarnya (bukan dummy):
+
+  1. Gambar divalidasi (JPG/PNG, maksimal 5 MB) dan dipra-proses dengan
+     Pillow (RF-08): dibaca, dipotong garis hitamnya, diubah ke RGB.
+  2. Kecerahan & kontras dihitung dari piksel asli (RF-10).
+  3. Gambar diubah menjadi 1000 angka (embedding) memakai EfficientNet-Lite0
+     yang telah terlatih di ImageNet lewat MediaPipe. Bagian ini bekukan
+     (tidak dilatih ulang) - hanya bertugas "melihat" gambar.
+  4. Angka tersebut diklasifikasikan oleh classifier softmax yang benar-benar
+     dilatih dari dataset ternak Indonesia (lihat latih.py dan
+     docs/dataset-dan-model.md). Keyakinannya sudah dikalibrasi
+     (temperature scaling) agar tidak terlalu percaya diri.
+  5. Bila berkas model belum ada, layanan otomatis kembali ke mode dummy
+     supaya aplikasi tetap bisa dijalankan dan diuji.
 
 Jalankan:
-    pip install -r requirements.txt
-    python app.py            # http://localhost:5000
+    .venv-mediapipe\\Scripts\\python.exe app.py       # http://localhost:5000
 """
+
+from __future__ import annotations
 
 import hashlib
 import io
+import json
 import os
 import time
+from pathlib import Path
 
+import numpy as np
 from flask import Flask, jsonify, request
 from PIL import Image, ImageStat, UnidentifiedImageError
 from werkzeug.exceptions import RequestEntityTooLarge
 
+from latih import potong_bingkai_gelap
+
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB
+
+BASE = Path(__file__).resolve().parent
+MODEL_DIR = BASE / "model"
+BERKAS_EMBEDDER = MODEL_DIR / "efficientnet_lite0.tflite"
 
 EKSTENSI_DIIZINKAN = {"jpg", "jpeg", "png"}
 UKURAN_MODEL = (224, 224)       # ukuran masukan model (RF-08)
 AMBANG_PERINGATAN = 0.70
 
-# Penyakit yang dapat dideteksi per spesies (penyakit luar/fisik).
-PENYAKIT = {
-    "sapi": [
-        {
-            "nama": "Penyakit Mulut dan Kuku (PMK)",
-            "fitur": [
-                "Luka/lepuh pada mulut dan gusi",
-                "Air liur berlebihan (hipersalivasi)",
-                "Luka pada kuku dan kuku terlepas",
-                "Ternak lemas dan tidak mau makan",
-            ],
-        },
-        {
-            "nama": "Lumpy Skin Disease (LSD)",
-            "fitur": [
-                "Benjolan keras (nodul) pada kulit",
-                "Nodul tersebar di leher, punggung, dan ambing",
-                "Demam dan pembengkakan kelenjar limfa",
-                "Penurunan produksi susu",
-            ],
-        },
+# Ciri khas tiap kelas, dipakai untuk mengisi bagian "ciri khas indikasi".
+# Ini sifat umum kelasnya, bukan hasil pelacakan titik tertentu pada foto.
+CIRI_KELAS = {
+    "Sehat": [
+        "Tidak terlihat luka, benjolan, atau keropeng pada bagian yang tampak",
+        "Bulu tampak rata dan ternak berdiri normal",
+        "Tidak ada pembengkakan pada kuku atau mulut",
     ],
-    "kambing": [
-        {
-            "nama": "Scabies",
-            "fitur": [
-                "Keropeng dan luka pada kulit",
-                "Kerontokan bulu setempat",
-                "Gatal hebat, ternak sering menggaruk",
-                "Kulit menebal dan bersisik",
-            ],
-        },
-        {
-            "nama": "Orf",
-            "fitur": [
-                "Luka lepuh pada bibir dan moncong",
-                "Keropeng tebal berwarna gelap",
-                "Luka pada ambing pada kambing betina",
-                "Sulit makan karena nyeri di mulut",
-            ],
-        },
+    "Lumpy Skin Disease (LSD)": [
+        "Benjolan keras (nodul) pada kulit",
+        "Nodul dapat tersebar di leher, punggung, dan ambing",
+        "Kulit tampak menebal di sekitar nodul",
     ],
-    "ayam": [
-        {
-            "nama": "Coccidiosis",
-            "fitur": [
-                "Bulu kusam dan berdiri (menggembung)",
-                "Kotoran berdarah atau berlendir",
-                "Ayam lesu dan mengantuk",
-                "Penurunan nafsu makan",
-            ],
-        },
+    "Penyakit Mulut dan Kuku (PMK)": [
+        "Luka atau lepuh pada mulut, gusi, dan lidah",
+        "Luka pada kuku dan sekitar kuku",
+        "Ternak tampak lemas serta tidak mau makan",
+    ],
+    "Gangguan Kulit (Scabies/Orf)": [
+        "Keropeng atau luka pada kulit dan sekitar mulut",
+        "Kerontokan bulu setempat",
+        "Kulit menebal, bersisik, atau tampak berkerak",
+    ],
+    "Coccidiosis": [
+        "Kotoran berdarah atau berlendir pada alas kandang",
+        "Ayam lesu dan bulu tampak kusam",
+        "Nafsu makan menurun",
+    ],
+    "Tetelo (Newcastle Disease)": [
+        "Kotoran encer kehijauan",
+        "Ayam tampak lesu dan sulit bernapas",
+        "Kepala berputar atau sayap terkulai",
+    ],
+    "Salmonellosis": [
+        "Kotoran encer berwarna keputihan atau kekuningan",
+        "Ayam tampak lemas dan mengantuk",
+        "Bulu di sekitar dubur tampak kotor",
     ],
 }
 
+# Penyakit cadangan bila berkas model belum tersedia (mode dummy).
+PENYAKIT_DUMMY = {
+    "sapi": ["Penyakit Mulut dan Kuku (PMK)", "Lumpy Skin Disease (LSD)"],
+    "kambing": ["Gangguan Kulit (Scabies/Orf)"],
+    "ayam": ["Coccidiosis", "Tetelo (Newcastle Disease)", "Salmonellosis"],
+}
 
-def acak_deterministik(seed: bytes, minimum: float, maksimum: float) -> float:
-    """Angka acak 0..1 yang stabil untuk isi gambar yang sama."""
-    angka = int.from_bytes(hashlib.sha256(seed).digest()[:6], "big")
-    return minimum + (angka / 0xFFFFFFFFFFFF) * (maksimum - minimum)
+
+# ---------------------------------------------------------------------------
+# Pemuatan model
+# ---------------------------------------------------------------------------
+class ModelKlasifikasi:
+    """Classifier softmax linear di atas embedding EfficientNet-Lite0."""
+
+    def __init__(self, spesies: str, berkas: Path):
+        isi = np.load(berkas, allow_pickle=False)
+        self.spesies = spesies
+        self.W = isi["W"].astype(np.float32)
+        self.b = isi["b"].astype(np.float32)
+        self.suhu = float(isi["suhu"])
+        self.kelas = [str(k) for k in isi["kelas"]]
+        self.nama = f"efficientnet-lite0+softmax-{spesies}-v1"
+
+    def prediksi(self, embedding: np.ndarray) -> tuple[str, float, list[dict]]:
+        logits = (embedding @ self.W + self.b) / self.suhu
+        logits = logits - logits.max()
+        exp = np.exp(logits)
+        peluang = exp / exp.sum()
+        urut = np.argsort(-peluang)
+        peringkat = [
+            {"kelas": self.kelas[i], "peluang": round(float(peluang[i]), 4)} for i in urut
+        ]
+        teratas = urut[0]
+        return self.kelas[teratas], float(peluang[teratas]), peringkat
 
 
+MODEL: dict[str, ModelKlasifikasi] = {}
+METADATA: dict = {}
+
+
+def siapkan_model() -> None:
+    """Muat semua berkas model yang tersedia beserta metadata akurasinya."""
+    global METADATA
+    berkas_meta = MODEL_DIR / "metadata.json"
+    if berkas_meta.exists():
+        try:
+            METADATA = json.loads(berkas_meta.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            METADATA = {}
+
+    for spesies in ("sapi", "kambing", "ayam"):
+        berkas = MODEL_DIR / f"{spesies}.npz"
+        if berkas.exists():
+            try:
+                MODEL[spesies] = ModelKlasifikasi(spesies, berkas)
+            except Exception as e:  # berkas rusak -> pakai mode dummy
+                print(f"[ai-service] gagal memuat model {spesies}: {e}")
+
+
+def ambil_embedder():
+    """Buat pengekstrak fitur MediaPipe sekali saja (mahal bila diulang)."""
+    global _EMBEDDER
+    if _EMBEDDER is False:
+        return None
+    if _EMBEDDER is not None:
+        return _EMBEDDER
+    if not BERKAS_EMBEDDER.exists():
+        print(f"[ai-service] {BERKAS_EMBEDDER.name} tidak ada -> mode dummy")
+        _EMBEDDER = False
+        return None
+    import mediapipe as mp
+    from mediapipe.tasks import python as mp_python
+    from mediapipe.tasks.python import vision
+
+    dasar = mp_python.BaseOptions(model_asset_path=str(BERKAS_EMBEDDER))
+    opsi = vision.ImageEmbedderOptions(base_options=dasar, l2_normalize=True, quantize=False)
+    _EMBEDDER = vision.ImageEmbedder.create_from_options(opsi)
+    return _EMBEDDER
+
+
+_EMBEDDER = None
+
+
+# ---------------------------------------------------------------------------
+# Pra-pemrosesan (RF-08) dan evaluasi kualitas foto (RF-10)
+# ---------------------------------------------------------------------------
 def praproses(isi: bytes):
-    """RF-08: validasi gambar sungguhan, konversi RGB, dan normalisasi ukuran.
-
-    Mengembalikan (gambar_rgb, info) atau melempar ValueError bila tidak valid.
-    """
+    """Validasi gambar sungguhan, konversi RGB, dan normalisasi ukuran."""
     try:
         gambar = Image.open(io.BytesIO(isi))
         gambar.load()
@@ -104,9 +186,10 @@ def praproses(isi: bytes):
     if lebar_asli < 16 or tinggi_asli < 16:
         raise ValueError("Resolusi gambar terlalu kecil (minimal 16x16 piksel).")
 
-    rgb = gambar.convert("RGB").resize(UKURAN_MODEL)
+    rgb = gambar.convert("RGB")
+    kecil = rgb.resize(UKURAN_MODEL)
 
-    stat = ImageStat.Stat(rgb)
+    stat = ImageStat.Stat(kecil)
     kecerahan = sum(stat.mean) / 3.0
     kontras = sum(stat.stddev) / 3.0
 
@@ -120,9 +203,50 @@ def praproses(isi: bytes):
     return rgb, info
 
 
+def dummy_prediksi(spesies: str, rgb: Image.Image, info: dict):
+    """Mode cadangan bila model nyata belum tersedia."""
+    kecil = rgb.resize(UKURAN_MODEL)
+    seed = kecil.tobytes()
+    daftar = PENYAKIT_DUMMY[spesies]
+
+    def acak(tanda: bytes, minimum: float, maksimum: float) -> float:
+        angka = int.from_bytes(hashlib.sha256(seed + tanda).digest()[:6], "big")
+        return minimum + (angka / 0xFFFFFFFFFFFF) * (maksimum - minimum)
+
+    penyakit = daftar[int(acak(b"|idx", 0, 1000)) % len(daftar)]
+    if acak(b"|yakin", 0, 1) < 0.20:
+        confidence = acak(b"|rendah", 0.42, 0.68)
+    else:
+        confidence = acak(b"|tinggi", 0.74, 0.97)
+    return penyakit, confidence, [], "dummy-v1"
+
+
+# ---------------------------------------------------------------------------
+# Endpoint
+# ---------------------------------------------------------------------------
 @app.get("/health")
 def health():
-    return jsonify(status="ok", model="dummy-v1", spesies=list(PENYAKIT.keys()))
+    model_aktif = {
+        sp: {
+            "model": m.nama,
+            "kelas": m.kelas,
+            "akurasi_uji": METADATA.get(sp, {}).get("akurasi_uji"),
+        }
+        for sp, m in MODEL.items()
+    }
+    return jsonify(
+        status="ok",
+        mode="nyata" if MODEL else "dummy",
+        embedder=siapkan_embedder_aktif(),
+        model=model_aktif,
+        spesies=list(PENYAKIT_DUMMY.keys()),
+    )
+
+
+def siapkan_embedder_aktif() -> str:
+    if not MODEL:
+        return "tidak dipakai (mode dummy)"
+    return "efficientnet_lite0.tflite" if BERKAS_EMBEDDER.exists() else "hilang"
 
 
 @app.post("/predict")
@@ -130,7 +254,7 @@ def predict():
     mulai = time.perf_counter()
 
     spesies = (request.form.get("spesies") or "").strip().lower()
-    if spesies not in PENYAKIT:
+    if spesies not in PENYAKIT_DUMMY:
         return jsonify(error="Spesies tidak dikenal. Pilih sapi, kambing, atau ayam."), 400
 
     berkas = request.files.get("gambar")
@@ -151,27 +275,32 @@ def predict():
     except ValueError as e:
         return jsonify(error=str(e)), 400
 
-    seed = rgb.tobytes()  # hasil stabil untuk gambar yang sama
+    # RF-09 / RF-11: klasifikasi.
+    model = MODEL.get(spesies)
+    embedder = ambil_embedder() if model else None
+    fitur_visual: list[str] = []
 
-    # RF-09 / RF-11: pemilihan model + klasifikasi (dummy).
-    daftar = PENYAKIT[spesies]
-    indeks = int(acak_deterministik(seed + b"|idx", 0, 1000)) % len(daftar)
-    kandidat = daftar[indeks]
+    if model and embedder is not None:
+        import mediapipe as mp
 
-    # 1 dari 5 gambar dibuat berkeyakinan rendah supaya jalur peringatan (RF-13) teruji.
-    peluang = acak_deterministik(seed + b"|yakin", 0, 1)
-    if peluang < 0.20:
-        confidence = acak_deterministik(seed + b"|rendah", 0.42, 0.68)
+        gambar = potong_bingkai_gelap(rgb)
+        hasil = embedder.embed(
+            mp.Image(image_format=mp.ImageFormat.SRGB, data=np.asarray(gambar))
+        )
+        embedding = np.asarray(hasil.embeddings[0].embedding, dtype=np.float32)
+        penyakit, confidence, peringkat = model.prediksi(embedding)
+        nama_model = model.nama
+        fitur_visual = list(CIRI_KELAS.get(penyakit, []))
     else:
-        confidence = acak_deterministik(seed + b"|tinggi", 0.74, 0.97)
+        penyakit, confidence, peringkat, nama_model = dummy_prediksi(spesies, rgb, info)
+        fitur_visual = list(CIRI_KELAS.get(penyakit, []))
 
-    # RF-10: evaluasi kualitas foto -> mempengaruhi keyakinan.
-    fitur = list(kandidat["fitur"])
+    # RF-10: kualitas foto mempengaruhi keyakinan.
     if info["kecerahan"] < 60:
-        fitur.append("Catatan foto: pencahayaan terlalu gelap")
+        fitur_visual.append("Catatan foto: pencahayaan terlalu gelap")
         confidence *= 0.72
     if info["kontras"] < 18:
-        fitur.append("Catatan foto: kurang tajam / kontras rendah")
+        fitur_visual.append("Catatan foto: kurang tajam / kontras rendah")
         confidence *= 0.82
 
     confidence = round(min(max(confidence, 0.05), 0.99), 4)
@@ -179,12 +308,13 @@ def predict():
 
     return jsonify(
         spesies=spesies,
-        penyakit=kandidat["nama"],
+        penyakit=penyakit,
         confidence=confidence,
-        fitur_visual=fitur,
+        fitur_visual=fitur_visual,
         kualitas_foto=info,
+        peringkat=peringkat,
         peringatan=confidence < AMBANG_PERINGATAN,
-        model="dummy-v1",
+        model=nama_model,
         durasi_ms=durasi,
     )
 
@@ -204,8 +334,17 @@ def metode_salah(_):
     return jsonify(error="Metode HTTP tidak diizinkan."), 405
 
 
+siapkan_model()
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    print(f"[ai-service] pra-pemrosesan gambar: PIL aktif, masukan {UKURAN_MODEL}")
-    print(f"[ai-service] model klasifikasi DUMMY berjalan di http://localhost:{port}")
+    if MODEL:
+        print(f"[ai-service] model NYATA aktif: {', '.join(sorted(MODEL))}")
+        for sp, m in sorted(MODEL.items()):
+            akurasi = METADATA.get(sp, {}).get("akurasi_uji")
+            tambahan = f", akurasi uji {akurasi * 100:.1f}%" if akurasi else ""
+            print(f"[ai-service]   {sp:8} -> {', '.join(m.kelas)}{tambahan}")
+    else:
+        print("[ai-service] berkas model belum ada -> mode DUMMY")
+    print(f"[ai-service] berjalan di http://localhost:{port}")
     app.run(host="127.0.0.1", port=port, debug=False)

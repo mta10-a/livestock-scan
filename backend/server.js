@@ -92,6 +92,7 @@ function barisKeHasil(baris) {
     gejala: baris.gejala || '',
     fitur_visual: fitur,
     rekomendasi: rekomendasiUntuk(baris.penyakit),
+    model: baris.model || '',
     created_at: baris.created_at,
   };
 }
@@ -227,8 +228,8 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
   try {
     const info = db
       .prepare(
-        `INSERT INTO riwayat (user_id, spesies, penyakit, confidence, peringatan, gejala, fitur_visual)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO riwayat (user_id, spesies, penyakit, confidence, peringatan, gejala, fitur_visual, model)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         req.userId,
@@ -237,7 +238,8 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
         confidence,
         peringatan,
         gejala || null,
-        JSON.stringify(prediksi.fitur_visual || [])
+        JSON.stringify(prediksi.fitur_visual || []),
+        prediksi.model || null
       );
 
     db.prepare('UPDATE users SET sisa_scan = sisa_scan - 1 WHERE id = ?').run(req.userId);
