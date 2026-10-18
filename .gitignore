@@ -22,5 +22,6 @@ ai-service/model/.cache/
 Thumbs.db
 desktop.ini
 
-# Halaman bantu sementara untuk memeriksa skala warna (bukan bagian aplikasi)
-frontend/_uji-*.html
+# Berkas pendukung lokal (tidak diikutkan ke repositori)
+docs/
+presentasi/

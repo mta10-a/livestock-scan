@@ -1,24 +1,15 @@
-/**
- * Uji API LivestockHealth Scan (TC-F01 s.d. TC-F13 + tambahan).
- * Jalankan: node uji-api.mjs
- *
- * Skrip ini mandiri: cukup backend utama hidup di port 3000 (BASE1).
- * Untuk kasus "layanan AI mati", skrip mengangkat sendiri backend kedua
- * di port PORT_UJI (bawaan 3101) yang diarahkan ke port Flask kosong,
- * lalu mematikannya lagi setelah selesai.
- */
-
 import { spawn } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const B1 = process.env.BASE1 || 'http://127.0.0.1:3000';
-/* Backend kedua diangkat sendiri oleh skrip ini, memakai port & database
-   terpisah, untuk menguji perilaku "layanan AI mati". */
+
 const PORT_UJI = Number(process.env.PORT_UJI || 3101);
 const B2 = process.env.BASE2 || `http://127.0.0.1:${PORT_UJI}`;
 const DIR_INI = fileURLToPath(new URL('.', import.meta.url));
+
+const DIR_BACKEND = path.join(DIR_INI, '..', 'backend');
 
 let lulus = 0, gagal = 0;
 const catatan = [];
@@ -28,13 +19,12 @@ function cek(nama, kondisi, detail = '') {
   else { gagal++; catatan.push(`  GAGAL ${nama}${detail ? ' -> ' + detail : ''}`); }
 }
 
-/* Tunggu sampai backend benar-benar siap: /api/me tanpa token harus 401. */
 async function tungguBackend(base, percobaan = 40) {
   for (let i = 0; i < percobaan; i++) {
     try {
       const r = await fetch(`${base}/api/me`);
       if (r.status === 401) return true;
-    } catch { /* belum siap */ }
+    } catch {}
     await new Promise((r) => setTimeout(r, 500));
   }
   return false;
@@ -42,11 +32,11 @@ async function tungguBackend(base, percobaan = 40) {
 
 function angkatBackendUji() {
   const anak = spawn(process.execPath, ['server.js'], {
-    cwd: DIR_INI,
+    cwd: DIR_BACKEND,
     env: {
       ...process.env,
       PORT: String(PORT_UJI),
-      FLASK_URL: 'http://127.0.0.1:5999', // sengaja diarahkan ke port kosong
+      FLASK_URL: 'http://127.0.0.1:5999',
       DATA_DIR: path.join(os.tmpdir(), 'livestockhealth-uji'),
     },
     stdio: 'ignore',
@@ -54,7 +44,6 @@ function angkatBackendUji() {
   return anak;
 }
 
-/* Gambar JPG/PNG sungguhan (kecil) agar pra-pemrosesan Pillow (RF-08) ikut teruji. */
 const JPG_B64 = '/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCAAgACADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwDT8P6cJW8ON/YWjzmXRXcGV8ed/wAe/wC8f92cPz0+b7zc+rfDmm7/APhGv+Kf0WXzNEd/nk/1v/Ht87/uj83Pv95ufV/h7T/N/wCEd/4kekTebozyfvXx53/Hv+8f92cP83+199ufVPD+nCVvDjf2Fo85l0V3BlfHnf8AHv8AvH/dnD89Pm+83Pr5J643w5pu/wD4Rr/in9Fl8zRHf55P9b/x7fO/7o/Nz7/ebn1PDmm7/wDhGv8Ain9Fl8zRHf55P9b/AMe3zv8Auj83Pv8Aebn1PDmm7/8AhGv+Kf0WXzNEd/nk/wBb/wAe3zv+6Pzc+/3m59Tw5pu//hGv+Kf0WXzNEd/nk/1v/Ht87/uj83Pv95ufUAf4e0/zf+Ed/wCJHpE3m6M8n718ed/x7/vH/dnD/N/tffbn1PD2n+b/AMI7/wASPSJvN0Z5P3r487/j3/eP+7OH+b/a++3PqeHtP83/AIR3/iR6RN5ujPJ+9fHnf8e/7x/3Zw/zf7X3259Tw9p/m/8ACO/8SPSJvN0Z5P3r487/AI9/3j/uzh/m/wBr77c+oAnh/ThK3hxv7C0ecy6K7gyvjzv+Pf8AeP8Auzh+enzfebn1b4c03f8A8I1/xT+iy+Zojv8APJ/rf+Pb53/dH5uff7zc+r/D2n+b/wAI7/xI9Im83Rnk/evjzv8Aj3/eP+7OH+b/AGvvtz6p4f04St4cb+wtHnMuiu4Mr487/j3/AHj/ALs4fnp833m59QD/2Q==';
 const PNG_B64 = 'iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAIAAABvFaqvAAAAPklEQVR4nGNcsKWHgRqAiSqmMAxGg1iQORt27SJJc4CbG/VdxDRqEEEwahBhMGrQkC+PApDKl6HvNSZqGQQAQ58F8FBIsbUAAAAASUVORK5CYII=';
 
@@ -74,7 +63,7 @@ async function kirim(base, path, { method = 'GET', token, body, form } = {}) {
   else if (body) { headers['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
   const res = await fetch(base + path, { method, headers, body: payload });
   let data = {};
-  try { data = await res.json(); } catch { /* non-JSON */ }
+  try { data = await res.json(); } catch {}
   return { status: res.status, data };
 }
 
@@ -85,7 +74,6 @@ async function main() {
 
   if (!await tungguBackend(B1)) { console.error('Backend tidak merespons di ' + B1); process.exit(1); }
 
-  /* ---------- TC-F01 Registrasi ---------- */
   const emailA = emailUnik();
   let r = await kirim(B1, '/api/register', { method: 'POST', body: { nama: 'Budi Peternak', email: emailA, password: 'rahasia123' } });
   cek('RF-01 registrasi valid -> 201 + token', r.status === 201 && !!r.data.token, JSON.stringify(r.data));
@@ -99,14 +87,12 @@ async function main() {
   r = await kirim(B1, '/api/register', { method: 'POST', body: { nama: 'Bud', email: 'salah', password: '123' } });
   cek('RF-01 data tidak lengkap -> 400', r.status === 400, String(r.status));
 
-  /* ---------- TC-F02 Login ---------- */
   r = await kirim(B1, '/api/login', { method: 'POST', body: { email: emailA, password: 'salahbanget' } });
   cek('RF-02 login password salah -> 401', r.status === 401, String(r.status));
 
   r = await kirim(B1, '/api/login', { method: 'POST', body: { email: emailA, password: 'rahasia123' } });
   cek('RF-02 login benar -> 200 + token', r.status === 200 && !!r.data.token, String(r.status));
 
-  /* ---------- RF-07 hak akses ---------- */
   r = await kirim(B1, '/api/me', {});
   cek('RF-07 akses tanpa token -> 401', r.status === 401, String(r.status));
 
@@ -116,7 +102,6 @@ async function main() {
   r = await kirim(B1, '/api/me', { token: tokenA });
   cek('RF-26 /api/me -> nama + sisa scan', r.status === 200 && r.data.nama === 'Budi Peternak' && r.data.sisa_scan === 3, JSON.stringify(r.data));
 
-  /* ---------- TC-F03 Validasi unggahan ---------- */
   let form = new FormData();
   form.append('spesies', 'sapi');
   form.append('gambar', fotoTxt());
@@ -149,7 +134,6 @@ async function main() {
   r = await kirim(B1, '/api/me', { token: tokenA });
   cek('Validasi gagal TIDAK memotong kuota (tetap 3)', r.data.sisa_scan === 3, String(r.data.sisa_scan));
 
-  /* ---------- TC-F04 Scan berhasil ---------- */
   form = new FormData();
   form.append('spesies', 'sapi');
   form.append('gambar', fotoJpeg());
@@ -176,14 +160,12 @@ async function main() {
   );
   const idHasil = r.data.hasil?.id;
 
-  /* ---------- TC-F05 Riwayat ---------- */
   r = await kirim(B1, '/api/riwayat', { token: tokenA });
   cek('RF-18 riwayat berisi 1 data', r.status === 200 && r.data.riwayat?.length === 1, JSON.stringify(r.data).slice(0, 120));
 
   r = await kirim(B1, `/api/riwayat/${idHasil}`, { token: tokenA });
   cek('RF-18 detail riwayat -> 200', r.status === 200 && r.data.hasil?.id === idHasil, String(r.status));
 
-  /* ---------- TC-F06 Batas kuota ---------- */
   for (const sp of ['kambing', 'ayam']) {
     form = new FormData();
     form.append('spesies', sp);
@@ -203,15 +185,11 @@ async function main() {
   r = await kirim(B1, '/api/riwayat', { token: tokenA });
   cek('RF-16 riwayat bertambah jadi 3', r.data.riwayat?.length === 3, String(r.data.riwayat?.length));
 
-  /* ---------- TC-F07 Isolasi riwayat antar pengguna ---------- */
   const emailB = emailUnik();
   const rb = await kirim(B1, '/api/register', { method: 'POST', body: { nama: 'Siti Ternak', email: emailB, password: 'rahasia123' } });
   r = await kirim(B1, '/api/riwayat', { token: rb.data.token });
   cek('RF-18 pengguna lain tidak melihat riwayat orang lain', r.data.riwayat?.length === 0, String(r.data.riwayat?.length));
 
-  /* ---------- TC-F08 Flask mati: kuota tidak berkurang ---------- */
-  /* Skrip mengangkat sendiri backend kedua yang diarahkan ke port Flask kosong,
-     supaya pengujian ini mandiri dan tidak bergantung proses lain. */
   const anakUji = angkatBackendUji();
   try {
     if (await tungguBackend(B2)) {
@@ -231,7 +209,6 @@ async function main() {
     anakUji.kill();
   }
 
-  /* ---------- Statis frontend ---------- */
   const html = await fetch(B1 + '/login.html');
   cek('Frontend login.html tersaji dari backend', html.status === 200, String(html.status));
 
