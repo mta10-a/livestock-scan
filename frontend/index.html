@@ -20,7 +20,7 @@
   <script src="app.js"></script>
   <script>
     pasangLogo();
-    // Beranda bila sudah punya token, jika belum arahkan ke halaman masuk.
+
     setTimeout(() => {
       location.replace(getToken() ? 'beranda.html' : 'login.html');
     }, 450);

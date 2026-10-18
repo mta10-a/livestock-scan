@@ -32,15 +32,14 @@
     pasangLogo();
     el('nav-bawah').innerHTML = navBawah('scan');
 
-    const KELILING = 326.73; // 2 * pi * 52
+    const KELILING = 326.73;
 
     function render(hasil) {
       const s = spesiesInfo(hasil.spesies);
       const c = hasil.confidence ?? 0;
       const tingkat = tingkatKeyakinan(c);
       const geser = (KELILING * (1 - c)).toFixed(1);
-      /* Hasil "Sehat" tidak berbahaya, jadi catatannya beda dari penyakit.
-         Namun bila keyakinannya rendah, catatan "keyakinan rendah" tetap dipakai. */
+
       const kunciCatatan = hasilnyaSehat(hasil.penyakit) && tingkat !== 'rendah' ? 'sehat' : tingkat;
 
       const rek = hasil.rekomendasi || {};

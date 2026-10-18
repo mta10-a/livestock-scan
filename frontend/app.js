@@ -1,17 +1,8 @@
-/* ============================================================
-   LivestockHealth Scan - app.js
-   Pustaka bersama untuk semua halaman frontend.
-   ============================================================ */
-
-/* Alamat backend. Jika halaman dibuka lewat server Express
-   (http://localhost:3000) pakai origin yang sama, jika dibuka
-   lewat Live Server / file:// arahkan ke localhost:3000. */
 const API_BASE = location.origin === 'http://localhost:3000' ? '' : 'http://localhost:3000';
 
-/* Ambang tingkat keyakinan (RF-12, RF-13). */
 const AMBANG_PERINGATAN = 0.70;
 const AMBANG_TINGGI = 0.85;
-/* Ukuran maksimal foto 5 MB (validasi awal di sisi klien). */
+
 const UKURAN_MAKS = 5 * 1024 * 1024;
 const TIPE_DIIZINKAN = ['image/jpeg', 'image/jpg', 'image/png'];
 
@@ -21,7 +12,6 @@ const SPESIES = {
   ayam: { nama: 'Ayam', penyakit: ['Coccidiosis'] },
 };
 
-/* ---------------------- Ikon (SVG garis, bukan emoji) ---------------------- */
 const IKON = (() => {
   const gaya = 'fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"';
   const bungkus = (isi) => `<svg viewBox="0 0 24 24" ${gaya}>${isi}</svg>`;
@@ -43,11 +33,9 @@ const IKON = (() => {
   };
 })();
 
-/* Logo merek & favicon (berkas gambar di folder img/). */
 const LOGO_SRC = 'img/logo.png';
 const FAVICON_SRC = 'img/favicon.png';
 
-/* ---------------------- Utilitas DOM ---------------------- */
 const el = (id) => document.getElementById(id);
 
 function pasangLogo() {
@@ -64,7 +52,6 @@ function pasangLogo() {
   ikon.href = FAVICON_SRC;
 }
 
-/* Isi elemen bertanda data-ikon="nama" dengan ikon yang sesuai. */
 function pasangIkon() {
   document.querySelectorAll('[data-ikon]').forEach((n) => {
     const k = n.getAttribute('data-ikon');
@@ -79,7 +66,6 @@ function setPesan(id, pesan, tipe = 'error') {
   node.className = 'pesan' + (pesan ? ' ' + tipe : '');
 }
 
-/* Notifikasi ringkas melayang (pengganti alert). */
 function toast(pesan) {
   let t = el('toast-app');
   if (!t) {
@@ -106,7 +92,6 @@ function navBawah(aktif) {
   </nav>`;
 }
 
-/* ---------------------- Token & sesi ---------------------- */
 const getToken = () => localStorage.getItem('token');
 const setToken = (t) => localStorage.setItem('token', t);
 const hapusToken = () => localStorage.removeItem('token');
@@ -117,7 +102,6 @@ function keluar() {
   location.replace('login.html');
 }
 
-/* ---------------------- Klien API ---------------------- */
 async function api(path, { method = 'GET', body, formData } = {}) {
   const headers = {};
   const token = getToken();
@@ -138,13 +122,12 @@ async function api(path, { method = 'GET', body, formData } = {}) {
   }
 
   let data = {};
-  try { data = await res.json(); } catch { /* biarkan kosong */ }
+  try { data = await res.json(); } catch {}
 
   if (!res.ok) throw new Error(data.error || `Permintaan gagal (${res.status}).`);
   return data;
 }
 
-/* Wajib login. Mengembalikan data pengguna atau null (sudah dialihkan). */
 async function butuhLogin() {
   if (!getToken()) { location.replace('login.html'); return null; }
   try {
@@ -156,7 +139,6 @@ async function butuhLogin() {
   }
 }
 
-/* ---------------------- Pemformatan ---------------------- */
 const BULAN = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
 function formatTanggal(iso) {
@@ -175,23 +157,17 @@ function tingkatKeyakinan(x) {
   return 'rendah';
 }
 
-/* Skala warna keyakinan.
-   Makin RENDAH makin hijau, makin TINGGI (makin gawat) makin merah.
-   Catatan: bila hasilnya "Sehat", temuannya tidak berbahaya, jadi warnanya
-   tetap hijau walau keyakinannya tinggi. */
 const WARNA_SKALA = { rendah: 'hijau', sedang: 'kuning', tinggi: 'merah' };
 
 const KELAS_SEHAT = 'Sehat';
 const hasilnyaSehat = (penyakit) => penyakit === KELAS_SEHAT;
 
-/* Kelas warna untuk donat keyakinan ('' = warna bawaan CSS, yaitu hijau). */
 function kelasBar(x, penyakit) {
   if (hasilnyaSehat(penyakit)) return '';
   const tingkat = tingkatKeyakinan(x);
   return tingkat === 'rendah' ? '' : tingkat;
 }
 
-/* Kelas warna untuk pil persen. */
 function kelasPil(x, penyakit) {
   if (hasilnyaSehat(penyakit)) return 'hijau';
   return WARNA_SKALA[tingkatKeyakinan(x)];
@@ -199,7 +175,6 @@ function kelasPil(x, penyakit) {
 
 const spesiesInfo = (kode) => SPESIES[kode] || { nama: kode || '-', penyakit: [] };
 
-/* ---------------------- Hasil scan sementara ---------------------- */
 const simpanHasil = (hasil) => sessionStorage.setItem('hasil_scan', JSON.stringify(hasil));
 const ambilHasil = () => {
   try { return JSON.parse(sessionStorage.getItem('hasil_scan')); }

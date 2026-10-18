@@ -27,7 +27,6 @@
         </div>
       </div>
 
-      <!-- Langkah 1: pilih jenis ternak (RF-05) -->
       <section id="langkah-1">
         <h2 class="judul">Pilih jenis ternak</h2>
         <p class="subjudul" style="margin-bottom:16px">Model AI dipilih otomatis sesuai spesies.</p>
@@ -35,7 +34,6 @@
         <button class="tombol mtk" id="lanjut-1" type="button" disabled>Lanjut unggah foto</button>
       </section>
 
-      <!-- Langkah 2: unggah foto (RF-06, RF-07, RF-08) -->
       <section id="langkah-2" hidden>
         <h2 class="judul">Foto ternak</h2>
         <p class="subjudul" style="margin-bottom:16px">Ambil dari jarak dekat dan fokus pada bagian yang menunjukkan gejala.</p>
@@ -68,7 +66,6 @@
         </div>
       </section>
 
-      <!-- Langkah 3: proses (RF-07 s.d. RF-17) -->
       <section id="langkah-3" hidden>
         <div class="memuat">
           <div class="spinner"></div>
@@ -92,7 +89,6 @@
     let spesiesTerpilih = null;
     let berkas = null;
 
-    /* ---------- Langkah 1: pilih spesies ---------- */
     el('daftar-spesies').innerHTML = Object.entries(SPESIES).map(([kode, s]) => `
       <button class="spesies" type="button" data-spesies="${kode}">
         <span class="radio"></span>
@@ -122,7 +118,6 @@
     el('lanjut-1').addEventListener('click', () => tampilLangkah(2));
     el('kembali-2').addEventListener('click', () => tampilLangkah(1));
 
-    /* ---------- Langkah 2: unggah foto ---------- */
     el('ganti').addEventListener('click', () => el('berkas').click());
 
     el('berkas').addEventListener('change', () => {
@@ -153,7 +148,6 @@
       el('analisis').disabled = true;
     }
 
-    /* ---------- Langkah 3: kirim ke backend ---------- */
     el('analisis').addEventListener('click', async () => {
       if (!berkas || !spesiesTerpilih) return;
       setPesan('pesan', '');
@@ -196,7 +190,6 @@
       }
     });
 
-    /* ---------- Info kuota (RF-26) ---------- */
     (async () => {
       const me = await butuhLogin();
       if (!me) return;

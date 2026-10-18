@@ -1,32 +1,24 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
-/* ============================================================
-   LivestockHealth Scan - Sistem Desain
-   Skala: 4/8px | Radius: 10/14/18 | Warna: palet Figma
-   ============================================================ */
 :root {
-  /* Merek */
+
   --hijau: #00673d;
   --hijau-gelap: #00532f;
   --hijau-tint: #e7f0ea;
   --hijau-tint-2: #f2f7f3;
 
-  /* Permukaan */
   --luar: #e8e9e1;
   --latar: #fafbf5;
   --putih: #ffffff;
   --abu-tint: #f4f4ee;
 
-  /* Teks */
   --ink: #12241c;
   --ink-2: #3f4f47;
   --redup: #6c7c73;
 
-  /* Garis */
   --garis: #e5e4da;
   --garis-kuat: #d2d1c6;
 
-  /* Status */
   --merah: #b3261e;
   --merah-tint: #fbeceb;
   --kuning: #8a5b00;
@@ -56,8 +48,6 @@ button, input, textarea, select { font-family: inherit; }
 
 svg { display: block; }
 
-/* ---------- Kerangka layar ----------
-   Navbar atas & navigasi bawah diam; hanya .konten yang menggulir. */
 .app {
   max-width: 412px;
   height: 100%;
@@ -81,7 +71,6 @@ svg { display: block; }
 .konten.center { display: flex; flex-direction: column; }
 .konten.center > * { margin-block: auto; }
 
-/* ---------- Bilah atas ---------- */
 .bilah-atas {
   flex: 0 0 auto;
   display: flex;
@@ -114,7 +103,6 @@ svg { display: block; }
   margin-top: 1px;
 }
 
-/* ---------- Teks ---------- */
 .judul {
   font-size: 19px;
   font-weight: 600;
@@ -149,7 +137,6 @@ svg { display: block; }
 .spacer { flex: 1 1 auto; min-width: 0; }
 .baris-antara { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 
-/* ---------- Kartu & grup daftar ---------- */
 .kartu {
   background: var(--putih);
   border: 1px solid var(--garis);
@@ -188,7 +175,6 @@ svg { display: block; }
 .baris-judul { font-size: 12.5px; font-weight: 600; color: var(--ink); }
 .baris-meta { font-size: 10.5px; color: var(--redup); }
 
-/* ---------- Hero (kartu merek) ---------- */
 .hero-merek {
   background: var(--hijau);
   border-radius: var(--radius-lg);
@@ -218,7 +204,6 @@ svg { display: block; }
 }
 .hero-angka .ket { font-size: 10px; opacity: 0.85; margin-top: 2px; }
 
-/* ---------- Pil status ---------- */
 .pil {
   display: inline-flex;
   align-items: center;
@@ -234,7 +219,6 @@ svg { display: block; }
 .pil.merah { background: var(--merah-tint); color: var(--merah); }
 .pil.abu { background: var(--abu-tint); color: var(--redup); }
 
-/* ---------- Tombol ---------- */
 .tombol {
   display: inline-flex;
   align-items: center;
@@ -260,16 +244,13 @@ svg { display: block; }
 .tombol.polos { background: var(--abu-tint); color: var(--ink-2); }
 .tombol.mini { width: auto; min-height: 34px; padding: 0 13px; font-size: 11.5px; border-radius: 9px; }
 
-/* Jarak atas generik */
 .mtk { margin-top: 20px; }
 
-/* Ukuran ikon yang disuntikkan lewat data-ikon */
 [data-ikon] { display: block; }
 [data-ikon] > svg { width: 100%; height: 100%; }
 .tombol [data-ikon] { width: 18px; height: 18px; flex: 0 0 auto; }
 .chevron { width: 16px; height: 16px; color: var(--garis-kuat); flex: 0 0 auto; }
 
-/* ---------- Form ---------- */
 .medan { margin-bottom: 14px; }
 .medan > label {
   display: block;
@@ -304,7 +285,6 @@ svg { display: block; }
 .pesan.sukses { color: var(--hijau); }
 .pesan.mtk { margin-top: 12px; }
 
-/* ---------- Pilihan spesies ---------- */
 .spesies {
   display: flex;
   align-items: center;
@@ -342,7 +322,6 @@ svg { display: block; }
   background: var(--hijau);
 }
 
-/* ---------- Indikator langkah ---------- */
 .bilah-langkah { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
 .langkah { display: flex; gap: 6px; }
 .langkah i {
@@ -355,7 +334,6 @@ svg { display: block; }
 .langkah i.aktif { background: var(--hijau); }
 .langkah i.selesai { background: var(--hijau); opacity: 0.4; }
 
-/* ---------- Unggah foto ---------- */
 .unggah {
   display: flex;
   flex-direction: column;
@@ -392,7 +370,6 @@ svg { display: block; }
   background: #14201a;
 }
 
-/* ---------- Hasil analisis ---------- */
 .hero-hasil {
   background: var(--putih);
   border: 1px solid var(--garis);
@@ -405,7 +382,7 @@ svg { display: block; }
 .donat { width: 148px; height: 148px; transform: rotate(-90deg); }
 .donat circle { fill: none; stroke-width: 11; }
 .donat .jejak { stroke: var(--garis); }
-/* Skala warna keyakinan: rendah = hijau, sedang = kuning, tinggi/gawat = merah. */
+
 .donat .nilai { stroke: var(--hijau); stroke-linecap: round; transition: stroke-dashoffset .7s ease; }
 .donat.sedang .nilai { stroke: #c98a12; }
 .donat.tinggi .nilai { stroke: var(--merah); }
@@ -487,7 +464,6 @@ svg { display: block; }
   place-items: center;
 }
 
-/* ---------- Kosong ---------- */
 .kosong {
   display: flex;
   flex-direction: column;
@@ -511,7 +487,6 @@ svg { display: block; }
 .kosong .lingkaran svg { width: 25px; height: 25px; }
 .kosong p { font-size: 12px; color: var(--redup); max-width: 230px; }
 
-/* ---------- Filter chip ---------- */
 .chip-baris {
   display: flex;
   gap: 8px;
@@ -535,7 +510,6 @@ svg { display: block; }
 }
 .chip.aktif { background: var(--hijau); border-color: var(--hijau); color: #fff; }
 
-/* ---------- Baris wabah ---------- */
 .wabah {
   display: flex;
   align-items: flex-start;
@@ -545,7 +519,6 @@ svg { display: block; }
 .wabah + .wabah { border-top: 1px solid var(--garis); }
 .wabah .kota { font-size: 10px; color: var(--redup); margin-top: 2px; }
 
-/* ---------- Navigasi bawah ---------- */
 .nav-bawah {
   flex: 0 0 auto;
   display: grid;
@@ -573,7 +546,6 @@ svg { display: block; }
 .nav-bawah a svg { width: 21px; height: 21px; }
 .nav-bawah a.aktif { color: var(--hijau); background: var(--hijau-tint-2); }
 
-/* ---------- Memuat & notifikasi ---------- */
 .memuat { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 34px 20px; text-align: center; }
 .spinner {
   width: 30px;
