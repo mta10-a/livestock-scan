@@ -1,19 +1,3 @@
-/**
- * LivestockHealth Scan - Backend (prototype UTS)
- * ==============================================
- * Express + SQLite (node:sqlite) + bcryptjs + JWT + multer.
- *
- * Alur:  Browser -> Node.js -> Flask (AI dummy) -> Node.js -> Browser
- *
- * Endpoint:
- *   POST /api/register        RF-01
- *   POST /api/login           RF-02
- *   GET  /api/me              RF-26 (nama + sisa scan)
- *   POST /api/scan            RF-05 s.d. RF-17
- *   GET  /api/riwayat         RF-18
- *   GET  /api/riwayat/:id     RF-18 (detail)
- */
-
 const path = require('node:path');
 const express = require('express');
 const bcrypt = require('bcryptjs');
@@ -28,14 +12,13 @@ const FLASK_URL = process.env.FLASK_URL || 'http://127.0.0.1:5000';
 const JWT_SECRET = process.env.JWT_SECRET || 'rahasia-prototype-uts-livestockhealth';
 const KUOTA_GRATIS = Number(process.env.KUOTA_GRATIS || 3);
 const AMBANG_PERINGATAN = Number(process.env.AMBANG_PERINGATAN || 0.7);
-const UKURAN_MAKS = 5 * 1024 * 1024; // 5 MB
+const UKURAN_MAKS = Number(process.env.UKURAN_MAKS || 5 * 1024 * 1024);
 const SPESIES_VALID = ['sapi', 'kambing', 'ayam'];
 const TIPE_DIIZINKAN = ['image/jpeg', 'image/jpg', 'image/png'];
 
 const app = express();
 app.use(express.json());
 
-/* ---------------------- CORS (untuk Live Server) ---------------------- */
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
@@ -44,10 +27,8 @@ app.use((req, res, next) => {
   next();
 });
 
-/* ---------------------- Berkas statis frontend ---------------------- */
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
-/* ---------------------- Unggahan berkas (RF-06, RF-07) ---------------------- */
 const unggah = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: UKURAN_MAKS },
@@ -59,7 +40,6 @@ const unggah = multer({
   },
 });
 
-/* ---------------------- Helper ---------------------- */
 const emailValid = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 function buatToken(user) {
@@ -113,7 +93,6 @@ function auth(req, res, next) {
   }
 }
 
-/* ====================== RF-01 Registrasi akun ====================== */
 app.post('/api/register', (req, res) => {
   const nama = String(req.body.nama || '').trim();
   const email = String(req.body.email || '').trim().toLowerCase();
@@ -135,7 +114,6 @@ app.post('/api/register', (req, res) => {
   res.status(201).json({ token: buatToken({ id }), user: dataPengguna(id) });
 });
 
-/* ====================== RF-02 Login ====================== */
 app.post('/api/login', (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
@@ -153,12 +131,10 @@ app.post('/api/login', (req, res) => {
   res.json({ token: buatToken({ id }), user: dataPengguna(id) });
 });
 
-/* ====================== RF-26 Profil & sisa kuota ====================== */
 app.get('/api/me', auth, (req, res) => {
   res.json(dataPengguna(req.userId));
 });
 
-/* ====================== RF-18 Riwayat medis ====================== */
 app.get('/api/riwayat', auth, (req, res) => {
   const baris = db
     .prepare('SELECT * FROM riwayat WHERE user_id = ? ORDER BY id DESC')
@@ -174,7 +150,6 @@ app.get('/api/riwayat/:id', auth, (req, res) => {
   res.json({ hasil: barisKeHasil(baris) });
 });
 
-/* ====================== RF-05 s.d. RF-17 Scan ====================== */
 app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
   const spesies = String(req.body.spesies || '').trim().toLowerCase();
   const gejala = String(req.body.gejala || '').trim().slice(0, 300);
@@ -191,7 +166,6 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
     return res.status(403).json({ error: 'Kuota gratis habis. Beli token untuk melanjutkan scan.' });
   }
 
-  /* Panggil layanan AI. Bila gagal, kuota TIDAK berkurang. */
   let prediksi;
   try {
     const form = new FormData();
@@ -205,7 +179,7 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
     });
 
     let isi = {};
-    try { isi = await jawaban.json(); } catch { /* biarkan kosong */ }
+    try { isi = await jawaban.json(); } catch {}
 
     if (!jawaban.ok) {
       const pesan = isi.error || 'Layanan AI menolak permintaan.';
@@ -219,7 +193,6 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
     return res.status(502).json({ error: `${pesan} Kuota scan Anda tidak berkurang.` });
   }
 
-  /* Simpan hasil + potong kuota dalam satu transaksi. */
   const confidence = Number(prediksi.confidence) || 0;
   const peringatan = confidence < AMBANG_PERINGATAN ? 1 : 0;
 
@@ -260,7 +233,6 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
   res.status(201).json({ hasil, sisa_scan: profil.sisa_scan, total_scan: profil.total_scan });
 });
 
-/* ---------------------- Penanganan error ---------------------- */
 app.use((err, _req, res, _next) => {
   if (err instanceof multer.MulterError) {
     const pesan = err.code === 'LIMIT_FILE_SIZE'

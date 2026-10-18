@@ -1,8 +1,4 @@
 @echo off
-REM ============================================================
-REM  LivestockHealth Scan - menjalankan Backend (Express)
-REM  Klik dua kali berkas ini, atau jalankan dari terminal.
-REM ============================================================
 cd /d "%~dp0"
 
 if not exist "node_modules" (

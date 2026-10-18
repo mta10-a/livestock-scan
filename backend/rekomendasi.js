@@ -1,11 +1,3 @@
-/**
- * Rekomendasi penanganan per penyakit.
- * RF-14 (obat medis) dan RF-15 (jamu/herbal).
- *
- * Catatan: seluruh rekomendasi bersifat informasi awal dan tetap
- * perlu dikonfirmasi dokter hewan.
- */
-
 const REKOMENDASI = {
   'Penyakit Mulut dan Kuku (PMK)': {
     medis: [

@@ -1,9 +1,3 @@
-/**
- * Inisialisasi database SQLite.
- * Memakai modul bawaan Node.js `node:sqlite` (Node >= 22.5),
- * sehingga tidak perlu kompilasi modul native di Windows.
- */
-
 const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
@@ -43,7 +37,6 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_riwayat_user ON riwayat(user_id, id DESC);
 `);
 
-/* Migrasi ringan: database lama mungkin belum punya kolom `model`. */
 const kolomRiwayat = db.prepare('PRAGMA table_info(riwayat)').all().map((k) => k.name);
 if (!kolomRiwayat.includes('model')) {
   db.exec('ALTER TABLE riwayat ADD COLUMN model TEXT');
