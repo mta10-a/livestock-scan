@@ -139,6 +139,7 @@ livestockhealth-scan/
 ├── frontend/      halaman HTML/CSS/JS + aset (img/logo.png, img/favicon.png)
 ├── backend/       server Express (server.js), database (db.js), rekomendasi (rekomendasi.js), uji API (uji-api.mjs)
 ├── ai-service/    layanan Flask (app.py), skrip pelatihan (latih.py), model hasil latih (model/*.npz)
+├── presentasi/    slide presentasi UTS (.pptx) + skrip pembuatnya + tangkapan layar
 └── docs/          SRS, SDD, desain Figma, hasil testing, penjelasan dataset & model, naskah video
 ```
 
@@ -176,7 +177,9 @@ model, reset data, dan daftar masalah umum): **[docs/cara-menjalankan-dan-testin
 Penjelasan dataset, cara penyaringan gambar, akurasi nyata, dan keterbatasan model:
 **[docs/dataset-dan-model.md](docs/dataset-dan-model.md)**
 
-Naskah dan persiapan video presentasi UTS: **[docs/script-video.md](docs/script-video.md)**
+Naskah dan panduan merekam video presentasi UTS: **[docs/script-video.md](docs/script-video.md)**
+Slide presentasinya: **`presentasi/UTS-LivestockHealth-Scan.pptx`** (15 slide, naskah
+tertanam di catatan pembicara tiap slide).
 
 ## 10. Endpoint API
 
