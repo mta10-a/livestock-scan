@@ -1,28 +1,3 @@
-"""
-Pelatih model NYATA untuk LivestockHealth Scan
-==============================================
-
-Cara kerja (jujur, mudah dipahami):
-
-  1. Dataset nyata diambil dari folder "IPPL dataset".
-  2. Tiap gambar "dibersihkan" dulu: gambar rusak, terlalu kecil, rasio
-     ekstrem, hampir rata, dan yang mirip grafik/ilustrasi/sampul buku
-     dibuang. Hasil pembuangan dicatat apa adanya.
-  3. Tiap gambar yang lolos diubah menjadi 1000 angka (embedding) memakai
-     EfficientNet-Lite0 yang sudah terlatih di ImageNet (melalui MediaPipe).
-     Bagian ini TIDAK dilatih ulang - ia hanya "mata" yang membaca gambar.
-  4. Di atas 1000 angka itu dilatih classifier softmax (linear) memakai
-     dataset Anda sendiri. Inilah bagian yang benar-benar belajar.
-  5. Keyakinan (confidence) dikalibrasi dengan temperature scaling pada data
-     validasi supaya angkanya tidak terlalu percaya diri.
-  6. Hasil akhir disimpan ke model/<spesies>.npz + model/metadata.json.
-
-Jalankan:
-    .venv-mediapipe\\Scripts\\python.exe latih.py --periksa   # hanya cek kebersihan
-    .venv-mediapipe\\Scripts\\python.exe latih.py             # latih semua spesies
-    .venv-mediapipe\\Scripts\\python.exe latih.py --spesies sapi
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -40,16 +15,6 @@ BASE = Path(__file__).resolve().parent
 MODEL_DIR = BASE / "model"
 CACHE_DIR = MODEL_DIR / ".cache"
 EKSTENSI = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
-
-# ---------------------------------------------------------------------------
-# 1. Susunan dataset -> kelas penyakit
-# ---------------------------------------------------------------------------
-# split  : None  = dibagi otomatis (70% latih, 15% validasi, 15% uji)
-#          "train"/"valid"/"test" = memakai pembagian resmi dari dataset
-# profil : "ketat" = penyaringan penuh (dataset hasil scraping banyak grafik)
-#          "ringan" = hanya buang gambar rusak/kecil/rasio aneh.
-#                     Dipakai untuk ayam: lantai beton polos pada foto kotoran
-#                     bisa keliru dianggap "bukan foto" oleh penyaringan penuh.
 
 SPESIES_SPEC = {
     "sapi": {
@@ -107,24 +72,19 @@ SPESIES_SPEC = {
     },
 }
 
-# ---------------------------------------------------------------------------
-# 2. Penyaring gambar tidak layak
-# ---------------------------------------------------------------------------
-MIN_SISI = 64          # sisi terpendek minimal 64 piksel
-MAKS_RASIO = 3.0       # rasio lebar:tinggi maksimal 3:1
-MIN_SIMPANG = 6.0      # simpangan baku kecerahan: di bawah ini gambar rata/kosong
-MIN_WARNA = 8000       # warna unik pada 256x256; di bawah ini bukan foto (grafik/garis)
-MAKS_DATAR = 88.0      # % piksel berbidang rata; di atas ini mirip poster/infografis
-MAKS_BG_PUTIH = 0.50   # bagian tepi yang putih bersih; di atas ini foto studio/latar putih
-# Ambang di atas dipilih dari pengukuran 3.300+ gambar (lihat docs/dataset-dan-model.md),
-# bukan tebakan: gambar grafik berkumpul di ekor bawah "warna" dan ekor atas "datar".
+MIN_SISI = 64
+MAKS_RASIO = 3.0
+MIN_SIMPANG = 6.0
+MIN_WARNA = 8000
+MAKS_DATAR = 88.0
+MAKS_BG_PUTIH = 0.50
+
 MONTASE_DIR = Path(os.environ.get("LAPORAN_BERSIH", Path(os.environ.get("TEMP", ".")) / "opencode" / "laporan-bersih"))
 
-
 def potong_bingkai_gelap(gambar: Image.Image) -> Image.Image:
-    """Buang garis hitam (letterbox) yang sering ada di gambar hasil ekspor."""
+
     abu = np.asarray(gambar.convert("L")).astype(np.int16)
-    batas = 12  # ambang gelap
+    batas = 12
     h, w = abu.shape
 
     def gelap(iris) -> bool:
@@ -143,7 +103,6 @@ def potong_bingkai_gelap(gambar: Image.Image) -> Image.Image:
         gambar = gambar.crop((kiri, atas, kanan, bawah))
     return gambar
 
-
 def nilai_kebersihan(gambar: Image.Image) -> dict:
     rgb = gambar.convert("RGB")
     w, h = rgb.size
@@ -151,7 +110,6 @@ def nilai_kebersihan(gambar: Image.Image) -> dict:
     rasio = max(w, h) / max(1, kecil)
     simp = ImageStat.Stat(rgb.convert("L")).stddev[0]
 
-    # Banyaknya warna unik: foto asli punya puluhan ribu, grafik/ilustrasi jauh lebih sedikit.
     warna = rgb.resize((256, 256)).getcolors(maxcolors=256 * 256)
     warna = 256 * 256 if warna is None else len(warna)
 
@@ -177,9 +135,8 @@ def nilai_kebersihan(gambar: Image.Image) -> dict:
         "bg_putih": round(bg_putih, 3),
     }
 
-
 def layak(n: dict, profil: str = "ketat") -> tuple[bool, str]:
-    """Periksa kelayakan gambar. Profil 'ringan' hanya memakai aturan dasar."""
+
     if n["sisi"] < MIN_SISI:
         return False, "terlalu kecil"
     if n["rasio"] > MAKS_RASIO:
@@ -196,10 +153,6 @@ def layak(n: dict, profil: str = "ketat") -> tuple[bool, str]:
         return False, "foto latar putih (studio)"
     return True, ""
 
-
-# ---------------------------------------------------------------------------
-# 3. Pengekstrak fitur (MediaPipe EfficientNet-Lite0, dibekukan)
-# ---------------------------------------------------------------------------
 def buat_pengekstrak():
     import mediapipe as mp
     from mediapipe.tasks import python as mp_python
@@ -222,12 +175,8 @@ def buat_pengekstrak():
 
     return ekstrak
 
-
-# ---------------------------------------------------------------------------
-# 4. Pengumpulan berkas + penyaringan
-# ---------------------------------------------------------------------------
 def bagi_otomatis(relatif: str) -> str:
-    """Pembagian latih/validasi/uji yang tetap sama tiap kali dijalankan."""
+
     angka = int(hashlib.sha1(relatif.encode("utf-8")).hexdigest()[:8], 16) % 100
     if angka < 70:
         return "train"
@@ -235,9 +184,8 @@ def bagi_otomatis(relatif: str) -> str:
         return "valid"
     return "test"
 
-
 def kumpulkan(dataset_root: Path, spesies: str, tulis_montase: bool) -> tuple[list, dict]:
-    """Kembalikan daftar (path, kelas, split) yang lolos + laporan penyaringan."""
+
     butir, laporan = [], {}
     dibuang = []
 
@@ -278,7 +226,6 @@ def kumpulkan(dataset_root: Path, spesies: str, tulis_montase: bool) -> tuple[li
         tulis_montase_dibuang(dibuang)
     return butir, laporan
 
-
 def tulis_montase_dibuang(dibuang: list) -> None:
     MONTASE_DIR.mkdir(parents=True, exist_ok=True)
     per_alasan: dict[str, list] = {}
@@ -302,10 +249,6 @@ def tulis_montase_dibuang(dibuang: list) -> None:
         lembar.save(tujuan)
         print(f"    montase {len(daftar):5} gambar -> {tujuan}")
 
-
-# ---------------------------------------------------------------------------
-# 5. Embedding (dengan cache supaya latih ulang cepat)
-# ---------------------------------------------------------------------------
 def embedding_semua(butir: list, ekstrak, spesies: str) -> np.ndarray:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     berkas_cache = CACHE_DIR / f"{spesies}-embedding.npz"
@@ -337,21 +280,16 @@ def embedding_semua(butir: list, ekstrak, spesies: str) -> np.ndarray:
     print(f"    embedding selesai: {len(butir)} butir ({baru} baru dihitung)")
     return X
 
-
-# ---------------------------------------------------------------------------
-# 6. Latih classifier softmax (linear) + kalibrasi suhu
-# ---------------------------------------------------------------------------
 def softmax(z: np.ndarray) -> np.ndarray:
     z = z - z.max(axis=1, keepdims=True)
     e = np.exp(z)
     return e / e.sum(axis=1, keepdims=True)
 
-
 def latih_linear(X: np.ndarray, y: np.ndarray, jumlah_kelas: int, epochs: int = 600):
     n, d = X.shape
     W = np.zeros((d, jumlah_kelas), dtype=np.float32)
     b = np.zeros(jumlah_kelas, dtype=np.float32)
-    # Adam
+
     mW = np.zeros_like(W); vW = np.zeros_like(W)
     mb = np.zeros_like(b); vb = np.zeros_like(b)
     lr, beta1, beta2, eps = 0.05, 0.9, 0.999, 1e-8
@@ -374,9 +312,8 @@ def latih_linear(X: np.ndarray, y: np.ndarray, jumlah_kelas: int, epochs: int = 
             par -= lr * mhat / (np.sqrt(vhat) + eps)
     return W, b
 
-
 def kalibrasi_suhu(logits: np.ndarray, y: np.ndarray) -> float:
-    """Cari suhu T yang membuat keyakinan paling jujur (NLL terkecil)."""
+
     terbaik, T_terbaik = None, 1.0
     for T in np.arange(0.4, 4.01, 0.05):
         P = softmax(logits / T)
@@ -384,7 +321,6 @@ def kalibrasi_suhu(logits: np.ndarray, y: np.ndarray) -> float:
         if terbaik is None or nll < terbaik:
             terbaik, T_terbaik = nll, float(T)
     return T_terbaik
-
 
 def laporan_uji(P: np.ndarray, y: np.ndarray, kelas: list[str]) -> dict:
     pred = P.argmax(axis=1)
@@ -407,10 +343,6 @@ def laporan_uji(P: np.ndarray, y: np.ndarray, kelas: list[str]) -> dict:
         "matriks_kesalahan": matriks.tolist(),
     }
 
-
-# ---------------------------------------------------------------------------
-# 7. Alur utama
-# ---------------------------------------------------------------------------
 def latih_spesies(spesies: str, dataset_root: Path, ekstrak, periksa_saja: bool, maks: int | None):
     print(f"\n=== {spesies.upper()} ===")
     butir, laporan = kumpulkan(dataset_root, spesies, tulis_montase=periksa_saja)
@@ -466,7 +398,6 @@ def latih_spesies(spesies: str, dataset_root: Path, ekstrak, periksa_saja: bool,
     hasil["penyaringan"] = laporan
     return hasil
 
-
 def main() -> int:
     p = argparse.ArgumentParser(description="Latih model nyata LivestockHealth Scan")
     p.add_argument("--dataset", default=str(Path(__file__).resolve().parents[2] / "IPPL dataset"))
@@ -498,7 +429,6 @@ def main() -> int:
         berkas_meta.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"\nSelesai dalam {time.perf_counter() - mulai:.0f} s. Metadata: {berkas_meta}")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

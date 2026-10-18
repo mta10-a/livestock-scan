@@ -1,26 +1,3 @@
-"""
-LivestockHealth Scan - AI Service
-=================================
-
-Alur kerja yang sebenarnya (bukan dummy):
-
-  1. Gambar divalidasi (JPG/PNG, maksimal 5 MB) dan dipra-proses dengan
-     Pillow (RF-08): dibaca, dipotong garis hitamnya, diubah ke RGB.
-  2. Kecerahan & kontras dihitung dari piksel asli (RF-10).
-  3. Gambar diubah menjadi 1000 angka (embedding) memakai EfficientNet-Lite0
-     yang telah terlatih di ImageNet lewat MediaPipe. Bagian ini bekukan
-     (tidak dilatih ulang) - hanya bertugas "melihat" gambar.
-  4. Angka tersebut diklasifikasikan oleh classifier softmax yang benar-benar
-     dilatih dari dataset ternak Indonesia (lihat latih.py dan
-     docs/dataset-dan-model.md). Keyakinannya sudah dikalibrasi
-     (temperature scaling) agar tidak terlalu percaya diri.
-  5. Bila berkas model belum ada, layanan otomatis kembali ke mode dummy
-     supaya aplikasi tetap bisa dijalankan dan diuji.
-
-Jalankan:
-    .venv-mediapipe\\Scripts\\python.exe app.py       # http://localhost:5000
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -38,18 +15,16 @@ from werkzeug.exceptions import RequestEntityTooLarge
 from latih import potong_bingkai_gelap
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB
+app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAKS_UKURAN_FOTO", 5 * 1024 * 1024))
 
 BASE = Path(__file__).resolve().parent
 MODEL_DIR = BASE / "model"
 BERKAS_EMBEDDER = MODEL_DIR / "efficientnet_lite0.tflite"
 
 EKSTENSI_DIIZINKAN = {"jpg", "jpeg", "png"}
-UKURAN_MODEL = (224, 224)       # ukuran masukan model (RF-08)
+UKURAN_MODEL = (224, 224)
 AMBANG_PERINGATAN = 0.70
 
-# Ciri khas tiap kelas, dipakai untuk mengisi bagian "ciri khas indikasi".
-# Ini sifat umum kelasnya, bukan hasil pelacakan titik tertentu pada foto.
 CIRI_KELAS = {
     "Sehat": [
         "Tidak terlihat luka, benjolan, atau keropeng pada bagian yang tampak",
@@ -88,19 +63,13 @@ CIRI_KELAS = {
     ],
 }
 
-# Penyakit cadangan bila berkas model belum tersedia (mode dummy).
 PENYAKIT_DUMMY = {
     "sapi": ["Penyakit Mulut dan Kuku (PMK)", "Lumpy Skin Disease (LSD)"],
     "kambing": ["Gangguan Kulit (Scabies/Orf)"],
     "ayam": ["Coccidiosis", "Tetelo (Newcastle Disease)", "Salmonellosis"],
 }
 
-
-# ---------------------------------------------------------------------------
-# Pemuatan model
-# ---------------------------------------------------------------------------
 class ModelKlasifikasi:
-    """Classifier softmax linear di atas embedding EfficientNet-Lite0."""
 
     def __init__(self, spesies: str, berkas: Path):
         isi = np.load(berkas, allow_pickle=False)
@@ -123,13 +92,11 @@ class ModelKlasifikasi:
         teratas = urut[0]
         return self.kelas[teratas], float(peluang[teratas]), peringkat
 
-
 MODEL: dict[str, ModelKlasifikasi] = {}
 METADATA: dict = {}
 
-
 def siapkan_model() -> None:
-    """Muat semua berkas model yang tersedia beserta metadata akurasinya."""
+
     global METADATA
     berkas_meta = MODEL_DIR / "metadata.json"
     if berkas_meta.exists():
@@ -143,12 +110,11 @@ def siapkan_model() -> None:
         if berkas.exists():
             try:
                 MODEL[spesies] = ModelKlasifikasi(spesies, berkas)
-            except Exception as e:  # berkas rusak -> pakai mode dummy
+            except Exception as e:
                 print(f"[ai-service] gagal memuat model {spesies}: {e}")
 
-
 def ambil_embedder():
-    """Buat pengekstrak fitur MediaPipe sekali saja (mahal bila diulang)."""
+
     global _EMBEDDER
     if _EMBEDDER is False:
         return None
@@ -167,15 +133,10 @@ def ambil_embedder():
     _EMBEDDER = vision.ImageEmbedder.create_from_options(opsi)
     return _EMBEDDER
 
-
 _EMBEDDER = None
 
-
-# ---------------------------------------------------------------------------
-# Pra-pemrosesan (RF-08) dan evaluasi kualitas foto (RF-10)
-# ---------------------------------------------------------------------------
 def praproses(isi: bytes):
-    """Validasi gambar sungguhan, konversi RGB, dan normalisasi ukuran."""
+
     try:
         gambar = Image.open(io.BytesIO(isi))
         gambar.load()
@@ -202,9 +163,8 @@ def praproses(isi: bytes):
     }
     return rgb, info
 
-
 def dummy_prediksi(spesies: str, rgb: Image.Image, info: dict):
-    """Mode cadangan bila model nyata belum tersedia."""
+
     kecil = rgb.resize(UKURAN_MODEL)
     seed = kecil.tobytes()
     daftar = PENYAKIT_DUMMY[spesies]
@@ -220,10 +180,6 @@ def dummy_prediksi(spesies: str, rgb: Image.Image, info: dict):
         confidence = acak(b"|tinggi", 0.74, 0.97)
     return penyakit, confidence, [], "dummy-v1"
 
-
-# ---------------------------------------------------------------------------
-# Endpoint
-# ---------------------------------------------------------------------------
 @app.get("/health")
 def health():
     model_aktif = {
@@ -242,12 +198,10 @@ def health():
         spesies=list(PENYAKIT_DUMMY.keys()),
     )
 
-
 def siapkan_embedder_aktif() -> str:
     if not MODEL:
         return "tidak dipakai (mode dummy)"
     return "efficientnet_lite0.tflite" if BERKAS_EMBEDDER.exists() else "hilang"
-
 
 @app.post("/predict")
 def predict():
@@ -269,13 +223,11 @@ def predict():
     if not isi:
         return jsonify(error="Berkas gambar kosong."), 400
 
-    # RF-08: pra-pemrosesan gambar.
     try:
         rgb, info = praproses(isi)
     except ValueError as e:
         return jsonify(error=str(e)), 400
 
-    # RF-09 / RF-11: klasifikasi.
     model = MODEL.get(spesies)
     embedder = ambil_embedder() if model else None
     fitur_visual: list[str] = []
@@ -295,7 +247,6 @@ def predict():
         penyakit, confidence, peringkat, nama_model = dummy_prediksi(spesies, rgb, info)
         fitur_visual = list(CIRI_KELAS.get(penyakit, []))
 
-    # RF-10: kualitas foto mempengaruhi keyakinan.
     if info["kecerahan"] < 60:
         fitur_visual.append("Catatan foto: pencahayaan terlalu gelap")
         confidence *= 0.72
@@ -318,21 +269,17 @@ def predict():
         durasi_ms=durasi,
     )
 
-
 @app.errorhandler(RequestEntityTooLarge)
 def terlalu_besar(_):
     return jsonify(error="Ukuran gambar melebihi 5 MB."), 413
-
 
 @app.errorhandler(404)
 def tidak_ditemukan(_):
     return jsonify(error="Endpoint tidak ditemukan."), 404
 
-
 @app.errorhandler(405)
 def metode_salah(_):
     return jsonify(error="Metode HTTP tidak diizinkan."), 405
-
 
 siapkan_model()
 

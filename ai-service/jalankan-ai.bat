@@ -1,8 +1,4 @@
 @echo off
-REM ============================================================
-REM  LivestockHealth Scan - menjalankan AI Service (Flask)
-REM  Klik dua kali berkas ini, atau jalankan dari terminal.
-REM ============================================================
 cd /d "%~dp0"
 
 if not exist ".venv-mediapipe\Scripts\python.exe" (
@@ -10,7 +6,7 @@ if not exist ".venv-mediapipe\Scripts\python.exe" (
   echo.
   echo     Buat sekali saja dengan perintah berikut:
   echo       py -3.11 -m venv .venv-mediapipe
-  echo       .venv-mediapipe\Scripts\python.exe -m pip install -r requirements.txt
+  echo       .venv-mediapipe\Scripts\python.exe -m pip install -r ..\requirements.txt
   echo.
   pause
   exit /b 1
