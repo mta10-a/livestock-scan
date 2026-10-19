@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Riwayat Medis - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Riwayat Medis</span>
+        <span class="sub" id="badge-jumlah">Memuat…</span>
+      </span>
+      <span class="spacer"></span>
+    </header>
+
+    <main class="konten">
+      <h2 class="judul">Riwayat pemeriksaan</h2>
+      <p class="subjudul" style="margin-bottom:16px">Setiap hasil scan tersimpan sebagai riwayat ternak Anda.</p>
+
+      <div class="chip-baris" id="filter"></div>
+      <div id="daftar"></div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('riwayat');
+
+    let semua = [];
+    let filterAktif = 'semua';
+
+    function renderFilter() {
+      const opsi = [['semua', 'Semua'], ...Object.entries(SPESIES).map(([k, s]) => [k, s.nama])];
+      el('filter').innerHTML = opsi.map(([k, label]) => `
+        <button class="chip ${filterAktif === k ? 'aktif' : ''}" data-filter="${k}" type="button">${label}</button>
+      `).join('');
+    }
+
+    function kartu(r) {
+      return `<button class="baris" type="button" data-id="${r.id}">
+        <span class="baris-utama">
+          <span class="baris-judul">${r.penyakit}</span>
+          <span class="baris-meta">${spesiesInfo(r.spesies).nama} · ${formatTanggal(r.created_at)}</span>
+        </span>
+        <span class="pil ${kelasPil(r.confidence, r.penyakit)}">${persen(r.confidence)}</span>
+        <span class="chevron" data-ikon="chevron"></span>
+      </button>`;
+    }
+
+    function renderDaftar() {
+      const data = filterAktif === 'semua' ? semua : semua.filter((r) => r.spesies === filterAktif);
+
+      if (!data.length) {
+        el('daftar').innerHTML = `<div class="kosong">
+          <span class="lingkaran" data-ikon="kosong"></span>
+          <p>${semua.length ? 'Tidak ada pemeriksaan untuk jenis ternak ini.' : 'Belum ada riwayat scan. Mulai scan pertama Anda untuk menyimpan hasilnya.'}</p>
+          <a class="tombol mini" href="scan.html">Mulai scan</a>
+        </div>`;
+      } else {
+        el('daftar').innerHTML = `<div class="grup">${data.map(kartu).join('')}</div>`;
+      }
+      pasangIkon();
+    }
+
+    el('filter').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-filter]');
+      if (!b) return;
+      filterAktif = b.dataset.filter;
+      renderFilter();
+      renderDaftar();
+    });
+
+    el('daftar').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-id]');
+      if (!b) return;
+      sessionStorage.setItem('hasil_id', b.dataset.id);
+      location.href = 'hasil.html';
+    });
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+
+      try {
+        const data = await api('/api/riwayat');
+        semua = data.riwayat || [];
+        el('badge-jumlah').textContent = semua.length ? `${semua.length} pemeriksaan` : 'Belum ada data';
+        renderFilter();
+        renderDaftar();
+      } catch (err) {
+        el('daftar').innerHTML = `<p class="pesan error">${err.message}</p>`;
+      }
+    })();
+  </script>
+</body>
+</html>

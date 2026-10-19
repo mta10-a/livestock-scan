@@ -1,0 +1,19 @@
+{
+  "name": "livestockhealth-scan-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend Express + SQLite untuk LivestockHealth Scan (prototype UTS)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0"
+  }
+}

@@ -1,0 +1,6 @@
+Flask>=3.0
+Pillow>=10.0
+numpy>=1.26
+# MediaPipe dipakai sebagai pengekstrak fitur (EfficientNet-Lite0).
+# Pada Windows, MediaPipe tersedia untuk Python 3.11-3.13.
+mediapipe>=0.10

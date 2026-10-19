@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daftar - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="konten tanpa-nav center">
+      <form class="kartu" id="form-daftar" style="width:100%;padding:26px 22px" novalidate>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:11px;margin-bottom:24px">
+          <span class="logo" data-logo style="width:76px;height:76px"></span>
+          <div class="teks-tengah">
+            <div class="tebal" style="font-size:13.5px;color:var(--hijau);letter-spacing:-0.01em">LivestockHealth Scan</div>
+            <div class="kecil teks-redup" style="margin-top:1px">Deteksi dini penyakit luar ternak</div>
+          </div>
+        </div>
+
+        <h1 class="judul">Buat akun</h1>
+        <p class="subjudul" style="margin-bottom:20px">Isi data berikut untuk mulai memindai ternak.</p>
+
+        <div class="medan">
+          <label for="nama">Nama lengkap</label>
+          <input id="nama" type="text" placeholder="Nama Anda" autocomplete="name" required />
+        </div>
+
+        <div class="medan">
+          <label for="email">Email</label>
+          <input id="email" type="email" placeholder="nama@gmail.com" autocomplete="email" required />
+        </div>
+
+        <div class="medan">
+          <label for="password">Kata sandi</label>
+          <input id="password" type="password" placeholder="Minimal 6 karakter" autocomplete="new-password" required />
+        </div>
+
+        <div class="medan">
+          <label>Daftar sebagai</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button type="button" class="chip aktif" id="peran-peternak">Peternak</button>
+            <button type="button" class="chip" id="peran-dokter">Dokter Hewan</button>
+            <span class="pil abu">segera</span>
+          </div>
+        </div>
+
+        <p class="pesan" id="pesan" role="alert"></p>
+
+        <button class="tombol mtk" id="tombol-daftar" type="submit">Daftar</button>
+
+        <p class="kecil teks-tengah teks-redup" style="margin-top:20px">
+          Sudah punya akun? <a class="tautan-kecil" href="login.html">Masuk</a>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+
+    el('peran-dokter').addEventListener('click', () => {
+      toast('Registrasi Dokter Hewan belum tersedia pada prototype UTS.');
+    });
+
+    el('form-daftar').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      setPesan('pesan', '');
+
+      const nama = el('nama').value.trim();
+      const email = el('email').value.trim();
+      const password = el('password').value;
+
+      if (nama.length < 3) return setPesan('pesan', 'Nama lengkap minimal 3 karakter.');
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return setPesan('pesan', 'Format email tidak valid.');
+      if (password.length < 6) return setPesan('pesan', 'Kata sandi minimal 6 karakter.');
+
+      const tombol = el('tombol-daftar');
+      tombol.disabled = true;
+      tombol.textContent = 'Mendaftarkan…';
+
+      try {
+        const data = await api('/api/register', { method: 'POST', body: { nama, email, password } });
+        setToken(data.token);
+        location.replace('beranda.html');
+      } catch (err) {
+        setPesan('pesan', err.message);
+      } finally {
+        tombol.disabled = false;
+        tombol.textContent = 'Daftar';
+      }
+    });
+  </script>
+</body>
+</html>

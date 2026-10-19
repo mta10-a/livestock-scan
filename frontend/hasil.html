@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hasil Analisis - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Hasil Analisis</span>
+        <span class="sub" id="badge-tanggal">Memuat…</span>
+      </span>
+      <span class="spacer"></span>
+    </header>
+
+    <main class="konten" id="konten">
+      <div class="memuat">
+        <div class="spinner"></div>
+        <p class="sedang teks-redup">Memuat hasil pemeriksaan…</p>
+      </div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('scan');
+
+    const KELILING = 326.73;
+
+    function render(hasil) {
+      const s = spesiesInfo(hasil.spesies);
+      const c = hasil.confidence ?? 0;
+      const tingkat = tingkatKeyakinan(c);
+      const geser = (KELILING * (1 - c)).toFixed(1);
+
+      const kunciCatatan = hasilnyaSehat(hasil.penyakit) && tingkat !== 'rendah' ? 'sehat' : tingkat;
+
+      const rek = hasil.rekomendasi || {};
+      const fitur = (hasil.fitur_visual || []).map((f) => `<li>${f}</li>`).join('');
+      const medis = (rek.medis || []).map((m) => `<li>${m}</li>`).join('');
+      const herbal = (rek.herbal || []).map((m) => `<li>${m}</li>`).join('');
+      const kf = hasil.kualitas_foto;
+
+      el('konten').innerHTML = `
+        <section class="hero-hasil">
+          <div class="donat-bungkus">
+            <svg class="donat ${kelasBar(c, hasil.penyakit)}" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="jejak" cx="60" cy="60" r="52"></circle>
+              <circle class="nilai" cx="60" cy="60" r="52"
+                      style="stroke-dasharray:${KELILING};stroke-dashoffset:${geser}"></circle>
+            </svg>
+            <div class="donat-inti">
+              <b>${persen(c)}</b>
+              <span>KEYAKINAN</span>
+            </div>
+          </div>
+
+          <div class="penyakit">${hasil.penyakit}</div>
+          <div class="meta-hasil">${s.nama} · keyakinan ${tingkat} · ${hasil.model || 'model tidak tercatat'}</div>
+
+          ${kf ? `<p class="kecil teks-redup" style="margin-top:12px">
+            Foto ${kf.lebar_asli}×${kf.tinggi_asli} px dinormalisasi ke ${kf.ukuran_model.join('×')} ·
+            kecerahan ${kf.kecerahan} · kontras ${kf.kontras}
+          </p>` : ''}
+        </section>
+
+        ${{
+          rendah: `<div class="catatan netral">
+               ${IKON.peringatan}
+               <span><b>Keyakinan rendah.</b> Nilai di bawah ${persen(AMBANG_PERINGATAN)}, sehingga hasil belum dapat
+               dipercaya. Ambil ulang foto dengan cahaya yang cukup, lalu konsultasikan ke dokter hewan.</span>
+             </div>`,
+          sedang: `<div class="catatan hati">
+               ${IKON.peringatan}
+               <span>Hasil ini <b>indikasi awal</b>, bukan diagnosis pasti. Tetap konsultasikan ke dokter hewan.</span>
+             </div>`,
+          tinggi: `<div class="catatan bahaya">
+               ${IKON.peringatan}
+               <span><b>Perlu penanganan segera.</b> Ternak terindikasi ${hasil.penyakit} dengan keyakinan
+               ${persen(c)}. Pisahkan ternak yang sakit dan hubungi dokter hewan.</span>
+             </div>`,
+          sehat: `<div class="catatan aman">
+               ${IKON.cek}
+               <span><b>Ternak tampak sehat.</b> Model tidak menemukan ciri penyakit luar dengan keyakinan
+               ${persen(c)}. Tetap lakukan pemeriksaan rutin, vaksinasi, dan sanitasi kandang secara berkala.</span>
+             </div>`,
+        }[kunciCatatan]}
+
+        ${hasil.gejala ? `
+          <div class="bagian"><span class="label-kecil">Catatan gejala</span></div>
+          <div class="kartu"><p class="sedang">${hasil.gejala}</p></div>` : ''}
+
+        <div class="bagian"><span class="label-kecil">Ciri khas kelas terpilih</span></div>
+        <div class="kartu"><ul class="daftar">${fitur || '<li>Tidak ada catatan.</li>'}</ul></div>
+
+        <div class="bagian"><span class="label-kecil">Penanganan medis</span></div>
+        <div class="kartu">
+          <div class="baris-antara" style="margin-bottom:8px">
+            <span class="tebal sedang">Langkah pengobatan</span>
+            <span data-ikon="obat" style="width:17px;height:17px;color:var(--hijau)"></span>
+          </div>
+          <ol class="daftar nomor">${medis || '<li>Belum ada rekomendasi.</li>'}</ol>
+        </div>
+
+        <div class="bagian"><span class="label-kecil">Jamu / herbal pendukung</span></div>
+        <div class="kartu">
+          <div class="baris-antara" style="margin-bottom:8px">
+            <span class="tebal sedang">Ramuan tradisional</span>
+            <span data-ikon="herbal" style="width:17px;height:17px;color:#7d9b3e"></span>
+          </div>
+          <ul class="daftar herbal">${herbal || '<li>Belum ada rekomendasi.</li>'}</ul>
+          <p class="kecil teks-redup" style="margin-top:8px">Herbal bersifat pendukung, bukan pengganti pengobatan medis.</p>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:22px">
+          <a class="tombol garis" href="riwayat.html">Riwayat</a>
+          <a class="tombol" href="scan.html">Scan lagi</a>
+        </div>
+      `;
+
+      el('badge-tanggal').textContent = formatTanggal(hasil.created_at);
+      pasangIkon();
+      pasangLogo();
+    }
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+
+      const id = sessionStorage.getItem('hasil_id');
+      if (id) {
+        try {
+          const { hasil } = await api('/api/riwayat/' + id);
+          render(hasil);
+        } catch (err) {
+          el('konten').innerHTML = `<p class="pesan error">${err.message}</p>`;
+        }
+        return;
+      }
+
+      const hasil = ambilHasil();
+      if (!hasil) { location.replace('scan.html'); return; }
+      render(hasil);
+    })();
+  </script>
+</body>
+</html>

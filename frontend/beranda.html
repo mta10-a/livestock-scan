@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beranda - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">LivestockHealth</span>
+        <span class="sub">Deteksi penyakit luar ternak</span>
+      </span>
+      <span class="spacer"></span>
+      <button class="tombol mini polos" id="tombol-keluar" type="button">Keluar</button>
+    </header>
+
+    <main class="konten">
+      <section class="hero-merek">
+        <div class="salam" id="sapaan">Halo, …</div>
+        <div class="ajak">Pantau kesehatan ternak Anda hari ini.</div>
+        <div class="hero-angka">
+          <div>
+            <div class="angka" id="stat-kuota">–</div>
+            <div class="ket">Scan gratis tersisa</div>
+          </div>
+          <div>
+            <div class="angka" id="stat-scan">0</div>
+            <div class="ket">Ternak dipindai</div>
+          </div>
+        </div>
+      </section>
+
+      <a class="tombol mtk" href="scan.html">
+        <span data-ikon="kamera"></span> Mulai Scan
+      </a>
+
+      <div class="bagian">
+        <span class="label-kecil">Pemeriksaan terbaru</span>
+        <a class="tautan-kecil" href="riwayat.html">Lihat semua</a>
+      </div>
+      <div id="pemeriksaan-terbaru"></div>
+
+      <div class="bagian" id="wabah">
+        <span class="label-kecil">Wabah di sekitar</span>
+      </div>
+      <div class="grup">
+        <div class="wabah">
+          <span class="spacer">
+            <span class="baris-judul" style="display:block">Penyakit Mulut dan Kuku (PMK)</span>
+            <span class="kota" style="display:block">Kab. Gunung Kidul · 3 hari lalu</span>
+          </span>
+          <span class="pil hijau">Terverifikasi</span>
+        </div>
+        <div class="wabah">
+          <span class="spacer">
+            <span class="baris-judul" style="display:block">Lumpy Skin Disease (LSD)</span>
+            <span class="kota" style="display:block">Kab. Bogor · 5 hari lalu</span>
+          </span>
+          <span class="pil hijau">Terverifikasi</span>
+        </div>
+      </div>
+      <p class="kecil teks-redup" style="margin-top:8px;padding:0 2px">
+        Peta wabah interaktif belum tersedia pada prototype UTS.
+      </p>
+
+      <div class="bagian">
+        <span class="label-kecil">Akses cepat</span>
+      </div>
+      <div class="grup" id="akses-cepat"></div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('beranda');
+    el('tombol-keluar').addEventListener('click', keluar);
+
+    const AKSES = [
+      { label: 'Riwayat Medis', sub: 'Semua hasil scan tersimpan', ikon: 'riwayat', href: 'riwayat.html' },
+      { label: 'Konsultasi Dokter', ikon: 'dokumen' },
+      { label: 'Peta Wabah', ikon: 'peta' },
+      { label: 'E-Sertifikat', ikon: 'dokumen' },
+      { label: 'Beli Token', ikon: 'token' },
+      { label: 'Lapor Wabah', ikon: 'lapor' },
+    ];
+
+    el('akses-cepat').innerHTML = AKSES.map((a) => a.href
+      ? `<a class="baris" href="${a.href}">
+           ${IKON[a.ikon]}
+           <span class="baris-utama">
+             <span class="baris-judul">${a.label}</span>
+             ${a.sub ? `<span class="baris-meta">${a.sub}</span>` : ''}
+           </span>
+           <span class="chevron" data-ikon="chevron"></span>
+         </a>`
+      : `<button class="baris" type="button" onclick="belumTersedia('${a.label}')">
+           ${IKON[a.ikon]}
+           <span class="baris-utama"><span class="baris-judul">${a.label}</span></span>
+           <span class="pil abu">Segera</span>
+         </button>`
+    ).join('');
+    pasangIkon();
+
+    function belumTersedia(nama) {
+      toast(`Fitur "${nama}" belum tersedia pada prototype UTS.`);
+    }
+
+    function bukaHasil(id) {
+      sessionStorage.setItem('hasil_id', String(id));
+      location.href = 'hasil.html';
+    }
+
+    function kartuTerbaru(r) {
+      return `<button class="baris" type="button" onclick="bukaHasil(${r.id})">
+        <span class="baris-utama">
+          <span class="baris-judul">${r.penyakit}</span>
+          <span class="baris-meta">${spesiesInfo(r.spesies).nama} · ${formatTanggal(r.created_at)}</span>
+        </span>
+        <span class="pil ${kelasPil(r.confidence)}">${persen(r.confidence)}</span>
+        <span class="chevron" data-ikon="chevron"></span>
+      </button>`;
+    }
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+
+      el('sapaan').textContent = `Halo, ${me.nama.split(' ')[0]}`;
+      el('stat-kuota').textContent = me.sisa_scan ?? 0;
+      el('stat-scan').textContent = me.total_scan ?? 0;
+
+      const wadah = el('pemeriksaan-terbaru');
+      try {
+        const { riwayat } = await api('/api/riwayat');
+        wadah.innerHTML = riwayat.length
+          ? `<div class="grup">${riwayat.slice(0, 3).map(kartuTerbaru).join('')}</div>`
+          : `<div class="kosong">
+               <span class="lingkaran" data-ikon="kosong"></span>
+               <p>Belum ada pemeriksaan. Mulai scan pertama Anda untuk melihat hasilnya di sini.</p>
+               <a class="tombol mini" href="scan.html">Mulai scan</a>
+             </div>`;
+      } catch (err) {
+        wadah.innerHTML = `<p class="pesan error">${err.message}</p>`;
+      }
+      pasangIkon();
+    })();
+  </script>
+</body>
+</html>

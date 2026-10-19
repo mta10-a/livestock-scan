@@ -1,0 +1,12 @@
+# Mengabaikan folder modul Node.js
+backend/node_modules/
+
+# Mengabaikan cache Python
+**/__pycache__/
+.pytest_cache/
+
+# Mengabaikan virtual environment Python milik mediapipe
+ai-service/.venv-mediapipe/
+.venv/
+venv/
+env/

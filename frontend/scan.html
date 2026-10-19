@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Scan Ternak - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Scan Ternak</span>
+        <span class="sub" id="badge-kuota">Memuat kuota…</span>
+      </span>
+      <span class="spacer"></span>
+    </header>
+
+    <main class="konten">
+      <div class="bilah-langkah">
+        <span class="label-kecil" id="teks-langkah">Langkah 1 dari 3</span>
+        <div class="langkah">
+          <i id="dot-1" class="aktif"></i>
+          <i id="dot-2"></i>
+          <i id="dot-3"></i>
+        </div>
+      </div>
+
+      <section id="langkah-1">
+        <h2 class="judul">Pilih jenis ternak</h2>
+        <p class="subjudul" style="margin-bottom:16px">Model AI dipilih otomatis sesuai spesies.</p>
+        <div id="daftar-spesies"></div>
+        <button class="tombol mtk" id="lanjut-1" type="button" disabled>Lanjut unggah foto</button>
+      </section>
+
+      <section id="langkah-2" hidden>
+        <h2 class="judul">Foto ternak</h2>
+        <p class="subjudul" style="margin-bottom:16px">Ambil dari jarak dekat dan fokus pada bagian yang menunjukkan gejala.</p>
+
+        <label class="unggah" for="berkas" id="dropzone">
+          <span class="lingkaran" data-ikon="kamera"></span>
+          <span class="utama">Ambil atau pilih foto</span>
+          <span class="ket">JPG atau PNG · maksimal 5 MB</span>
+        </label>
+        <input id="berkas" type="file" accept="image/jpeg,image/png" hidden />
+
+        <div id="wadah-preview" hidden style="margin-top:14px">
+          <img class="pratinjau" id="preview" alt="Pratinjau foto ternak" />
+          <div class="baris-antara" style="margin-top:10px">
+            <span class="kecil teks-redup" id="info-berkas"></span>
+            <button class="tombol mini polos" id="ganti" type="button">Ganti foto</button>
+          </div>
+        </div>
+
+        <div class="medan mtk">
+          <label for="gejala">Catatan gejala <span class="teks-redup" style="font-weight:400">(opsional)</span></label>
+          <textarea id="gejala" placeholder="Contoh: luka di mulut, lemas, tidak mau makan"></textarea>
+        </div>
+
+        <p class="pesan" id="pesan" role="alert"></p>
+
+        <div style="display:flex;gap:10px;margin-top:22px">
+          <button class="tombol garis" id="kembali-2" type="button">Kembali</button>
+          <button class="tombol" id="analisis" type="button" disabled>Analisis</button>
+        </div>
+      </section>
+
+      <section id="langkah-3" hidden>
+        <div class="memuat">
+          <div class="spinner"></div>
+          <div>
+            <p class="tebal sedang" id="teks-proses">Memproses gambar…</p>
+            <p class="kecil teks-redup" id="sub-proses">Pra-pemrosesan, ekstraksi fitur, klasifikasi penyakit.</p>
+          </div>
+        </div>
+        <p class="pesan" id="pesan-proses" style="margin-top:16px" role="alert"></p>
+      </section>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('scan');
+
+    let spesiesTerpilih = null;
+    let berkas = null;
+
+    el('daftar-spesies').innerHTML = Object.entries(SPESIES).map(([kode, s]) => `
+      <button class="spesies" type="button" data-spesies="${kode}">
+        <span class="radio"></span>
+        <span class="spacer">
+          <span class="nama" style="display:block">${s.nama}</span>
+          <span class="ket" style="display:block">${s.penyakit.join(' · ')}</span>
+        </span>
+      </button>`).join('');
+
+    el('daftar-spesies').addEventListener('click', (e) => {
+      const tombol = e.target.closest('[data-spesies]');
+      if (!tombol) return;
+      spesiesTerpilih = tombol.dataset.spesies;
+      document.querySelectorAll('.spesies').forEach((n) => n.classList.remove('terpilih'));
+      tombol.classList.add('terpilih');
+      el('lanjut-1').disabled = false;
+    });
+
+    function tampilLangkah(n) {
+      [1, 2, 3].forEach((i) => {
+        el('langkah-' + i).hidden = i !== n;
+        el('dot-' + i).className = i < n ? 'selesai' : i === n ? 'aktif' : '';
+      });
+      el('teks-langkah').textContent = `Langkah ${n} dari 3`;
+    }
+
+    el('lanjut-1').addEventListener('click', () => tampilLangkah(2));
+    el('kembali-2').addEventListener('click', () => tampilLangkah(1));
+
+    el('ganti').addEventListener('click', () => el('berkas').click());
+
+    el('berkas').addEventListener('change', () => {
+      setPesan('pesan', '');
+      const f = el('berkas').files[0];
+      if (!f) return;
+
+      if (!TIPE_DIIZINKAN.includes(f.type)) {
+        resetPratinjau();
+        return setPesan('pesan', 'Format foto harus JPG atau PNG.');
+      }
+      if (f.size > UKURAN_MAKS) {
+        resetPratinjau();
+        return setPesan('pesan', 'Ukuran foto melebihi 5 MB.');
+      }
+
+      berkas = f;
+      el('preview').src = URL.createObjectURL(f);
+      el('wadah-preview').hidden = false;
+      el('info-berkas').textContent = `${f.name} · ${(f.size / 1024 / 1024).toFixed(2)} MB`;
+      el('analisis').disabled = false;
+    });
+
+    function resetPratinjau() {
+      berkas = null;
+      el('berkas').value = '';
+      el('wadah-preview').hidden = true;
+      el('analisis').disabled = true;
+    }
+
+    el('analisis').addEventListener('click', async () => {
+      if (!berkas || !spesiesTerpilih) return;
+      setPesan('pesan', '');
+      tampilLangkah(3);
+
+      const tahap = [
+        'Pra-pemrosesan gambar…',
+        'Mengekstraksi fitur visual…',
+        `Menjalankan model AI ${spesiesInfo(spesiesTerpilih).nama}…`,
+      ];
+      let i = 0;
+      el('teks-proses').textContent = tahap[0];
+      const jam = setInterval(() => {
+        i = (i + 1) % tahap.length;
+        el('teks-proses').textContent = tahap[i];
+      }, 1200);
+
+      const form = new FormData();
+      form.append('gambar', berkas);
+      form.append('spesies', spesiesTerpilih);
+      form.append('gejala', el('gejala').value.trim());
+
+      try {
+        const data = await api('/api/scan', { method: 'POST', formData: form });
+        clearInterval(jam);
+        simpanHasil(data.hasil);
+        sessionStorage.removeItem('hasil_id');
+        location.href = 'hasil.html';
+      } catch (err) {
+        clearInterval(jam);
+        el('teks-proses').textContent = 'Analisis gagal';
+        el('sub-proses').textContent = err.message;
+        setPesan('pesan-proses', err.message + ' Kuota Anda tidak berkurang.');
+        const ulang = document.createElement('button');
+        ulang.className = 'tombol garis';
+        ulang.style.marginTop = '16px';
+        ulang.textContent = 'Coba lagi';
+        ulang.onclick = () => { ulang.remove(); setPesan('pesan-proses', ''); tampilLangkah(2); };
+        el('pesan-proses').after(ulang);
+      }
+    });
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+      el('badge-kuota').textContent = `Sisa ${me.sisa_scan} scan gratis`;
+
+      if (me.sisa_scan <= 0) {
+        el('lanjut-1').disabled = true;
+        el('analisis').disabled = true;
+        setPesan('pesan', 'Kuota gratis habis. Beli token untuk melanjutkan scan.');
+        const beli = document.createElement('button');
+        beli.className = 'tombol garis mtk';
+        beli.textContent = 'Beli token (segera)';
+        beli.onclick = () => toast('Pembelian token belum tersedia pada prototype UTS.');
+        el('pesan').after(beli);
+      }
+    })();
+  </script>
+</body>
+</html>
