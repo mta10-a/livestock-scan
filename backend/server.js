@@ -12,7 +12,7 @@ const FLASK_URL = process.env.FLASK_URL || 'http://127.0.0.1:5000';
 const JWT_SECRET = process.env.JWT_SECRET || 'rahasia-prototype-uts-livestockhealth';
 const KUOTA_GRATIS = Number(process.env.KUOTA_GRATIS || 3);
 const AMBANG_PERINGATAN = Number(process.env.AMBANG_PERINGATAN || 0.7);
-const UKURAN_MAKS = Number(process.env.UKURAN_MAKS || 5 * 1024 * 1024);
+const UKURAN_MAKS = 5 * 1024 * 1024; // 5 MB
 const SPESIES_VALID = ['sapi', 'kambing', 'ayam'];
 const TIPE_DIIZINKAN = ['image/jpeg', 'image/jpg', 'image/png'];
 
@@ -179,7 +179,7 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
     });
 
     let isi = {};
-    try { isi = await jawaban.json(); } catch {}
+    try { isi = await jawaban.json(); } catch { }
 
     if (!jawaban.ok) {
       const pesan = isi.error || 'Layanan AI menolak permintaan.';

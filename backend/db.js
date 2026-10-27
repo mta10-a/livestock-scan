@@ -17,7 +17,8 @@ db.exec(`
     email         TEXT    NOT NULL UNIQUE,
     password_hash TEXT    NOT NULL,
     peran         TEXT    NOT NULL DEFAULT 'peternak',
-    sisa_scan     INTEGER NOT NULL DEFAULT 3,
+    sisa_scan     INTEGER NOT NULL DEFAULT 3 CHECK (sisa_scan >= 0),
+    token_version INTEGER NOT NULL DEFAULT 0,
     created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -41,5 +42,21 @@ const kolomRiwayat = db.prepare('PRAGMA table_info(riwayat)').all().map((k) => k
 if (!kolomRiwayat.includes('model')) {
   db.exec('ALTER TABLE riwayat ADD COLUMN model TEXT');
 }
+
+const kolomUsers = db.prepare('PRAGMA table_info(users)').all().map((k) => k.name);
+if (!kolomUsers.includes('token_version')) {
+  db.exec('ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0');
+}
+
+db.exec(`
+  CREATE TRIGGER IF NOT EXISTS cegah_kuota_negatif
+  BEFORE UPDATE OF sisa_scan ON users
+  WHEN NEW.sisa_scan < 0
+  BEGIN
+    SELECT RAISE(ABORT, 'sisa_scan tidak boleh negatif');
+  END;
+`);
+
+db.exec('UPDATE users SET sisa_scan = 0 WHERE sisa_scan < 0');
 
 module.exports = { db, DIR_DATA };

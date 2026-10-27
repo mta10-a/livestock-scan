@@ -15,7 +15,6 @@ MAKS_UKURAN_FOTO = 5 * 1024 * 1024
 KUOTA_GRATIS = 3
 AMBANG_KEYAKINAN_RENDAH = 0.7
 
-KUNCI_TOKEN = "rahasia-prototype-uts-livestockhealth"
 
 FOLDER_FRONTEND = AKAR / "frontend"
 FOLDER_BACKEND = AKAR / "backend"
@@ -25,4 +24,3 @@ FOLDER_DATA = FOLDER_BACKEND / "data"
 BERKAS_DATABASE = FOLDER_DATA / "livestock.db"
 
 PYTHON_AI = FOLDER_AI / ".venv-mediapipe" / "Scripts" / "python.exe"
-

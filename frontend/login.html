@@ -69,8 +69,7 @@
       tombol.textContent = 'Memeriksa…';
 
       try {
-        const data = await api('/api/login', { method: 'POST', body: { email, password } });
-        setToken(data.token);
+        await api('/api/login', { method: 'POST', body: { email, password } });
         location.replace('beranda.html');
       } catch (err) {
         setPesan('pesan', err.message);

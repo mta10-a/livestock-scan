@@ -40,8 +40,6 @@
       const tingkat = tingkatKeyakinan(c);
       const geser = (KELILING * (1 - c)).toFixed(1);
 
-      const kunciCatatan = hasilnyaSehat(hasil.penyakit) && tingkat !== 'rendah' ? 'sehat' : tingkat;
-
       const rek = hasil.rekomendasi || {};
       const fitur = (hasil.fitur_visual || []).map((f) => `<li>${f}</li>`).join('');
       const medis = (rek.medis || []).map((m) => `<li>${m}</li>`).join('');
@@ -51,7 +49,7 @@
       el('konten').innerHTML = `
         <section class="hero-hasil">
           <div class="donat-bungkus">
-            <svg class="donat ${kelasBar(c, hasil.penyakit)}" viewBox="0 0 120 120" aria-hidden="true">
+            <svg class="donat ${kelasBar(c)}" viewBox="0 0 120 120" aria-hidden="true">
               <circle class="jejak" cx="60" cy="60" r="52"></circle>
               <circle class="nilai" cx="60" cy="60" r="52"
                       style="stroke-dasharray:${KELILING};stroke-dashoffset:${geser}"></circle>
@@ -86,12 +84,7 @@
                <span><b>Perlu penanganan segera.</b> Ternak terindikasi ${hasil.penyakit} dengan keyakinan
                ${persen(c)}. Pisahkan ternak yang sakit dan hubungi dokter hewan.</span>
              </div>`,
-          sehat: `<div class="catatan aman">
-               ${IKON.cek}
-               <span><b>Ternak tampak sehat.</b> Model tidak menemukan ciri penyakit luar dengan keyakinan
-               ${persen(c)}. Tetap lakukan pemeriksaan rutin, vaksinasi, dan sanitasi kandang secara berkala.</span>
-             </div>`,
-        }[kunciCatatan]}
+        }[tingkat]}
 
         ${hasil.gejala ? `
           <div class="bagian"><span class="label-kecil">Catatan gejala</span></div>

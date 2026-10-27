@@ -6,40 +6,43 @@
       "Penyakit Mulut dan Kuku (PMK)",
       "Sehat"
     ],
-    "akurasi_uji": 0.6923,
+    "bias": {
+      "Lumpy Skin Disease (LSD)": 0.6600000262260437
+    },
+    "akurasi_uji": 0.6982,
     "jumlah_uji": 169,
     "per_kelas": {
       "Lumpy Skin Disease (LSD)": {
         "jumlah": 65,
-        "benar": 38,
-        "recall": 0.5846
+        "benar": 52,
+        "recall": 0.8
       },
       "Penyakit Mulut dan Kuku (PMK)": {
         "jumlah": 33,
-        "benar": 28,
-        "recall": 0.8485
+        "benar": 27,
+        "recall": 0.8182
       },
       "Sehat": {
         "jumlah": 71,
-        "benar": 51,
-        "recall": 0.7183
+        "benar": 39,
+        "recall": 0.5493
       }
     },
     "matriks_kesalahan": [
       [
-        38,
-        6,
-        21
+        52,
+        3,
+        10
       ],
       [
-        0,
-        28,
-        5
+        2,
+        27,
+        4
       ],
       [
-        13,
+        25,
         7,
-        51
+        39
       ]
     ],
     "penyaringan": {

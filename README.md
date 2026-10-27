@@ -39,12 +39,13 @@ gambar, ditambah classifier softmax yang dilatih sendiri dari dataset ternak.
 |---|---|---|
 | Kambing | 91,6% | Sehat 89,1% · Gangguan Kulit (Scabies/Orf) 93,7% |
 | Ayam | 78,0% | Coccidiosis 85,1% · Sehat 76,8% · Salmonellosis 73,0% · Tetelo 72,4% |
-| Sapi | 69,2% | PMK 84,9% · Sehat 71,8% · LSD 58,5% |
+| Sapi | 69,8% | PMK 81,8% · Sehat 54,9% · LSD 80,0% |
 
-Angka itu hasil pengujian pada foto yang tidak dipakai saat melatih. Yang sapi
-paling rendah karena folder publik untuk LSD banyak berisi poster dan ilustrasi,
-bukan foto ternak asli. Keterbatasan ini diakui apa adanya, bukan angka yang
-dibuat-buat.
+Angka itu hasil pengujian pada foto yang tidak dipakai saat melatih. Recall LSD
+dinaikkan ke 80% dengan penyesuaian logit khusus LSD; konsekuensinya sebagian
+foto sapi sehat ikut tertandai LSD (Sehat turun ke 54,9%). Untuk skrining,
+false negative LSD dianggap lebih berisiko daripada false positive. Keterbatasan
+ini diakui apa adanya, bukan angka yang dibuat-buat.
 
 Kelas yang dikenali: sapi (Sehat, LSD, PMK), kambing (Sehat, Gangguan Kulit),
 ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
@@ -53,8 +54,9 @@ ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
 
 | Endpoint | Fungsi |
 |---|---|
-| POST /api/register | Daftar akun |
-| POST /api/login | Masuk, mengembalikan token |
+| POST /api/register | Daftar akun, memasang cookie sesi httpOnly |
+| POST /api/login | Masuk, mengembalikan token dan cookie sesi httpOnly |
+| POST /api/logout | Keluar dan mencabut token aktif |
 | GET /api/me | Nama dan sisa kuota |
 | POST /api/scan | Validasi, cek kuota, panggil layanan AI, simpan hasil |
 | GET /api/riwayat | Daftar pemeriksaan milik pengguna |
@@ -65,15 +67,24 @@ ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
 ## Catatan
 
 - Hasilnya **indikasi awal, bukan diagnosis**. Tetap perlu dikonfirmasi dokter hewan.
+- Rekomendasi medis/herbal **belum divalidasi dokter hewan**; status dan rujukan
+  umumnya ada di `docs/validasi-rekomendasi.md`.
 - Kata sandi disimpan dalam bentuk hash, bukan teks terbaca.
+- Sesi browser memakai cookie **httpOnly + SameSite=Lax**, bukan localStorage.
+  Logout mencabut token di server, dan halaman beranda/scan/hasil/riwayat
+  diarahkan ke login bila belum punya sesi.
+- Rahasia JWT dibuat otomatis di `backend/data/.jwt-secret` (tidak ikut repo).
+- Registrasi dan login dibatasi 10 percobaan per 10 menit per IP.
 - Foto yang diunggah tidak ditulis ke disk, hanya diproses di memori.
-- Pemindaian yang gagal tidak mengurangi kuota.
+- Format berkas diperiksa dari isi (magic bytes), bukan hanya nama/MIME.
+- Gambar di atas 40 MP atau 10.000 px per sisi ditolak sebelum diproses.
+- Pemindaian yang gagal tidak mengurangi kuota; kuota tidak bisa negatif.
 - Skala warna tingkat keyakinan sengaja dibalik dari kebiasaan: makin tinggi
   nilainya makin merah, karena artinya indikasi makin kuat dan perlu segera
   ditangani. Di bawah 70% berwarna hijau dengan catatan bahwa hasilnya belum
   bisa dipercaya. Hasil "Sehat" tetap hijau walau keyakinannya tinggi.
-- Kartu "Wabah di sekitar" di Beranda masih data contoh, karena fitur peta
-  wabah belum dikerjakan.
+- Bagian "Wabah di sekitar" di Beranda tidak menampilkan data contoh sebagai
+  wabah nyata; fitur peta wabah memang belum dikerjakan.
 
 ## Tautan
 

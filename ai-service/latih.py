@@ -16,6 +16,7 @@ MODEL_DIR = BASE / "model"
 CACHE_DIR = MODEL_DIR / ".cache"
 EKSTENSI = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
+
 SPESIES_SPEC = {
     "sapi": {
         "judul": "Sapi",
@@ -72,17 +73,17 @@ SPESIES_SPEC = {
     },
 }
 
+
 MIN_SISI = 64
-MAKS_RASIO = 3.0
+MAKS_RASIO = 3.01
 MIN_SIMPANG = 6.0
 MIN_WARNA = 8000
 MAKS_DATAR = 88.0
 MAKS_BG_PUTIH = 0.50
-
 MONTASE_DIR = Path(os.environ.get("LAPORAN_BERSIH", Path(os.environ.get("TEMP", ".")) / "opencode" / "laporan-bersih"))
 
-def potong_bingkai_gelap(gambar: Image.Image) -> Image.Image:
 
+def potong_bingkai_gelap(gambar: Image.Image) -> Image.Image:
     abu = np.asarray(gambar.convert("L")).astype(np.int16)
     batas = 12
     h, w = abu.shape
@@ -102,6 +103,7 @@ def potong_bingkai_gelap(gambar: Image.Image) -> Image.Image:
     if (atas, kiri, bawah, kanan) != (0, 0, h, w):
         gambar = gambar.crop((kiri, atas, kanan, bawah))
     return gambar
+
 
 def nilai_kebersihan(gambar: Image.Image) -> dict:
     rgb = gambar.convert("RGB")
@@ -135,8 +137,8 @@ def nilai_kebersihan(gambar: Image.Image) -> dict:
         "bg_putih": round(bg_putih, 3),
     }
 
-def layak(n: dict, profil: str = "ketat") -> tuple[bool, str]:
 
+def layak(n: dict, profil: str = "ketat") -> tuple[bool, str]:
     if n["sisi"] < MIN_SISI:
         return False, "terlalu kecil"
     if n["rasio"] > MAKS_RASIO:
@@ -152,6 +154,7 @@ def layak(n: dict, profil: str = "ketat") -> tuple[bool, str]:
     if n["bg_putih"] > MAKS_BG_PUTIH:
         return False, "foto latar putih (studio)"
     return True, ""
+
 
 def buat_pengekstrak():
     import mediapipe as mp
@@ -175,8 +178,8 @@ def buat_pengekstrak():
 
     return ekstrak
 
-def bagi_otomatis(relatif: str) -> str:
 
+def bagi_otomatis(relatif: str) -> str:
     angka = int(hashlib.sha1(relatif.encode("utf-8")).hexdigest()[:8], 16) % 100
     if angka < 70:
         return "train"
@@ -184,8 +187,8 @@ def bagi_otomatis(relatif: str) -> str:
         return "valid"
     return "test"
 
-def kumpulkan(dataset_root: Path, spesies: str, tulis_montase: bool) -> tuple[list, dict]:
 
+def kumpulkan(dataset_root: Path, spesies: str, tulis_montase: bool) -> tuple[list, dict]:
     butir, laporan = [], {}
     dibuang = []
 
@@ -226,6 +229,7 @@ def kumpulkan(dataset_root: Path, spesies: str, tulis_montase: bool) -> tuple[li
         tulis_montase_dibuang(dibuang)
     return butir, laporan
 
+
 def tulis_montase_dibuang(dibuang: list) -> None:
     MONTASE_DIR.mkdir(parents=True, exist_ok=True)
     per_alasan: dict[str, list] = {}
@@ -248,6 +252,7 @@ def tulis_montase_dibuang(dibuang: list) -> None:
         tujuan = MONTASE_DIR / f"dibuang-{nama}.png"
         lembar.save(tujuan)
         print(f"    montase {len(daftar):5} gambar -> {tujuan}")
+
 
 def embedding_semua(butir: list, ekstrak, spesies: str) -> np.ndarray:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -280,16 +285,18 @@ def embedding_semua(butir: list, ekstrak, spesies: str) -> np.ndarray:
     print(f"    embedding selesai: {len(butir)} butir ({baru} baru dihitung)")
     return X
 
+
 def softmax(z: np.ndarray) -> np.ndarray:
     z = z - z.max(axis=1, keepdims=True)
     e = np.exp(z)
     return e / e.sum(axis=1, keepdims=True)
 
+
 def latih_linear(X: np.ndarray, y: np.ndarray, jumlah_kelas: int, epochs: int = 600):
     n, d = X.shape
     W = np.zeros((d, jumlah_kelas), dtype=np.float32)
     b = np.zeros(jumlah_kelas, dtype=np.float32)
-
+    # Adam
     mW = np.zeros_like(W); vW = np.zeros_like(W)
     mb = np.zeros_like(b); vb = np.zeros_like(b)
     lr, beta1, beta2, eps = 0.05, 0.9, 0.999, 1e-8
@@ -312,8 +319,8 @@ def latih_linear(X: np.ndarray, y: np.ndarray, jumlah_kelas: int, epochs: int = 
             par -= lr * mhat / (np.sqrt(vhat) + eps)
     return W, b
 
-def kalibrasi_suhu(logits: np.ndarray, y: np.ndarray) -> float:
 
+def kalibrasi_suhu(logits: np.ndarray, y: np.ndarray) -> float:
     terbaik, T_terbaik = None, 1.0
     for T in np.arange(0.4, 4.01, 0.05):
         P = softmax(logits / T)
@@ -321,6 +328,7 @@ def kalibrasi_suhu(logits: np.ndarray, y: np.ndarray) -> float:
         if terbaik is None or nll < terbaik:
             terbaik, T_terbaik = nll, float(T)
     return T_terbaik
+
 
 def laporan_uji(P: np.ndarray, y: np.ndarray, kelas: list[str]) -> dict:
     pred = P.argmax(axis=1)
@@ -342,6 +350,7 @@ def laporan_uji(P: np.ndarray, y: np.ndarray, kelas: list[str]) -> dict:
         "per_kelas": per_kelas,
         "matriks_kesalahan": matriks.tolist(),
     }
+
 
 def latih_spesies(spesies: str, dataset_root: Path, ekstrak, periksa_saja: bool, maks: int | None):
     print(f"\n=== {spesies.upper()} ===")
@@ -398,6 +407,7 @@ def latih_spesies(spesies: str, dataset_root: Path, ekstrak, periksa_saja: bool,
     hasil["penyaringan"] = laporan
     return hasil
 
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Latih model nyata LivestockHealth Scan")
     p.add_argument("--dataset", default=str(Path(__file__).resolve().parents[2] / "IPPL dataset"))
@@ -429,6 +439,7 @@ def main() -> int:
         berkas_meta.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
         print(f"\nSelesai dalam {time.perf_counter() - mulai:.0f} s. Metadata: {berkas_meta}")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

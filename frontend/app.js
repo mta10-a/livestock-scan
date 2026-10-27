@@ -1,4 +1,4 @@
-const API_BASE = location.origin === 'http://localhost:3000' ? '' : 'http://localhost:3000';
+const API_BASE = location.protocol.startsWith('http') ? '' : 'http://localhost:3000';
 
 const AMBANG_PERINGATAN = 0.70;
 const AMBANG_TINGGI = 0.85;
@@ -7,9 +7,9 @@ const UKURAN_MAKS = 5 * 1024 * 1024;
 const TIPE_DIIZINKAN = ['image/jpeg', 'image/jpg', 'image/png'];
 
 const SPESIES = {
-  sapi: { nama: 'Sapi', penyakit: ['Penyakit Mulut dan Kuku (PMK)', 'Lumpy Skin Disease (LSD)'] },
-  kambing: { nama: 'Kambing', penyakit: ['Scabies', 'Orf'] },
-  ayam: { nama: 'Ayam', penyakit: ['Coccidiosis'] },
+  sapi: { nama: 'Sapi', penyakit: ['Lumpy Skin Disease (LSD)', 'Penyakit Mulut dan Kuku (PMK)', 'Sehat'] },
+  kambing: { nama: 'Kambing', penyakit: ['Gangguan Kulit (Scabies/Orf)', 'Sehat'] },
+  ayam: { nama: 'Ayam', penyakit: ['Coccidiosis', 'Salmonellosis', 'Sehat', 'Tetelo (Newcastle Disease)'] },
 };
 
 const IKON = (() => {
@@ -92,20 +92,19 @@ function navBawah(aktif) {
   </nav>`;
 }
 
-const getToken = () => localStorage.getItem('token');
-const setToken = (t) => localStorage.setItem('token', t);
-const hapusToken = () => localStorage.removeItem('token');
-
-function keluar() {
-  hapusToken();
+async function keluar() {
+  try { await api('/api/logout', { method: 'POST' }); } catch {}
   sessionStorage.removeItem('hasil_scan');
+  sessionStorage.removeItem('hasil_id');
   location.replace('login.html');
 }
 
+const esc = (nilai) => String(nilai ?? '').replace(/[&<>"']/g, (c) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[c]));
+
 async function api(path, { method = 'GET', body, formData } = {}) {
   const headers = {};
-  const token = getToken();
-  if (token) headers.Authorization = 'Bearer ' + token;
 
   let payload;
   if (formData) payload = formData;
@@ -116,7 +115,12 @@ async function api(path, { method = 'GET', body, formData } = {}) {
 
   let res;
   try {
-    res = await fetch(API_BASE + path, { method, headers, body: payload });
+    res = await fetch(API_BASE + path, {
+      method,
+      headers,
+      body: payload,
+      credentials: 'include',
+    });
   } catch {
     throw new Error('Tidak dapat terhubung ke server. Pastikan backend di http://localhost:3000 berjalan.');
   }
@@ -129,11 +133,9 @@ async function api(path, { method = 'GET', body, formData } = {}) {
 }
 
 async function butuhLogin() {
-  if (!getToken()) { location.replace('login.html'); return null; }
   try {
     return await api('/api/me');
   } catch {
-    hapusToken();
     location.replace('login.html');
     return null;
   }
