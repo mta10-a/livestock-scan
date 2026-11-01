@@ -199,10 +199,10 @@
         el('lanjut-1').disabled = true;
         el('analisis').disabled = true;
         setPesan('pesan', 'Kuota gratis habis. Beli token untuk melanjutkan scan.');
-        const beli = document.createElement('button');
+        const beli = document.createElement('a');
         beli.className = 'tombol garis mtk';
-        beli.textContent = 'Beli token (segera)';
-        beli.onclick = () => toast('Pembelian token belum tersedia pada prototype UTS.');
+        beli.href = 'token.html';
+        beli.textContent = 'Beli token';
         el('pesan').after(beli);
       }
     })();

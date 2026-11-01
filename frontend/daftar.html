@@ -81,8 +81,7 @@
       tombol.textContent = 'Mendaftarkan…';
 
       try {
-        const data = await api('/api/register', { method: 'POST', body: { nama, email, password } });
-        setToken(data.token);
+        await api('/api/register', { method: 'POST', body: { nama, email, password } });
         location.replace('beranda.html');
       } catch (err) {
         setPesan('pesan', err.message);

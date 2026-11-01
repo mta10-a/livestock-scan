@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profil Peternakan - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Profil Peternakan</span>
+        <span class="sub" id="badge-akun">Memuat…</span>
+      </span>
+      <span class="spacer"></span>
+    </header>
+
+    <main class="konten">
+      <h2 class="judul">Data peternakan</h2>
+      <p class="subjudul" style="margin-bottom:16px">Dipakai untuk laporan wabah dan penyesuaian saran penanganan.</p>
+
+      <div class="kartu">
+        <div class="medan">
+          <label for="nama">Nama pemilik</label>
+          <input id="nama" type="text" disabled />
+        </div>
+        <div class="medan">
+          <label for="email">Email</label>
+          <input id="email" type="email" disabled />
+        </div>
+        <div class="medan">
+          <label for="peternakan">Nama peternakan</label>
+          <input id="peternakan" type="text" placeholder="Contoh: Kandang Sumber Rejeki" maxlength="80" />
+        </div>
+        <div class="medan">
+          <label for="alamat">Alamat atau kecamatan</label>
+          <input id="alamat" type="text" placeholder="Contoh: Kec. Cibiru, Bandung" maxlength="160" />
+        </div>
+        <div class="medan">
+          <label for="jenis">Jenis ternak utama</label>
+          <select id="jenis">
+            <option value="">Belum dipilih</option>
+            <option value="sapi">Sapi</option>
+            <option value="kambing">Kambing</option>
+            <option value="ayam">Ayam</option>
+            <option value="campuran">Campuran</option>
+          </select>
+        </div>
+        <div class="medan">
+          <label for="jumlah">Jumlah ternak</label>
+          <input id="jumlah" type="number" min="0" max="1000000" placeholder="Contoh: 12" />
+        </div>
+        <p class="pesan" id="pesan" role="alert"></p>
+        <button class="tombol" id="simpan" type="button">Simpan profil</button>
+      </div>
+
+      <div class="bagian"><span class="label-kecil">Ringkasan</span></div>
+      <div class="grup">
+        <div class="baris">
+          <span class="baris-utama">
+            <span class="baris-judul">Total pemeriksaan</span>
+            <span class="baris-meta">Sejak akun dibuat</span>
+          </span>
+          <span class="pil hijau" id="total">0</span>
+        </div>
+        <div class="baris">
+          <span class="baris-utama">
+            <span class="baris-judul">Sisa kuota scan</span>
+            <span class="baris-meta">Termasuk token yang sudah ditukar</span>
+          </span>
+          <span class="pil hijau" id="kuota">0</span>
+        </div>
+        <a class="baris" href="token.html">
+          <span class="baris-utama">
+            <span class="baris-judul">Tambah kuota</span>
+            <span class="baris-meta">Tukar kode token</span>
+          </span>
+          <span class="chevron" data-ikon="chevron"></span>
+        </a>
+      </div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('');
+
+    function isi(me) {
+      el('nama').value = me.nama || '';
+      el('email').value = me.email || '';
+      el('peternakan').value = me.profil?.nama_peternakan || '';
+      el('alamat').value = me.profil?.alamat || '';
+      el('jenis').value = me.profil?.jenis_ternak || '';
+      el('jumlah').value = me.profil?.jumlah_ternak ?? '';
+      el('total').textContent = me.total_scan ?? 0;
+      el('kuota').textContent = me.sisa_scan ?? 0;
+      el('badge-akun').textContent = me.profil?.nama_peternakan || 'Belum diisi';
+    }
+
+    el('simpan').addEventListener('click', async () => {
+      el('simpan').disabled = true;
+      const jumlah = el('jumlah').value.trim();
+
+      try {
+        const me = await api('/api/profil', {
+          method: 'PUT',
+          body: {
+            nama_peternakan: el('peternakan').value.trim(),
+            alamat: el('alamat').value.trim(),
+            jenis_ternak: el('jenis').value,
+            jumlah_ternak: jumlah === '' ? null : Number(jumlah),
+          },
+        });
+        isi(me);
+        setPesan('pesan', 'Profil tersimpan.', 'sukses');
+        toast('Profil peternakan diperbarui.');
+      } catch (err) {
+        setPesan('pesan', err.message);
+      } finally {
+        el('simpan').disabled = false;
+      }
+    });
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+      isi(me);
+      pasangIkon();
+    })();
+  </script>
+</body>
+</html>

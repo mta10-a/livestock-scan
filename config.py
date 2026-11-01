@@ -15,7 +15,8 @@ MAKS_UKURAN_FOTO = 5 * 1024 * 1024
 KUOTA_GRATIS = 3
 AMBANG_KEYAKINAN_RENDAH = 0.7
 
-KUNCI_TOKEN = "rahasia-prototype-uts-livestockhealth"
+# Rahasia JWT tidak disimpan di repo. Backend membuatnya otomatis di
+# backend/data/.jwt-secret, atau memakai env JWT_SECRET bila disediakan.
 
 FOLDER_FRONTEND = AKAR / "frontend"
 FOLDER_BACKEND = AKAR / "backend"

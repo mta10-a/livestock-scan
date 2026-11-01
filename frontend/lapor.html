@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lapor Wabah - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Lapor Wabah</span>
+        <span class="sub" id="badge-laporan">Memuat…</span>
+      </span>
+      <span class="spacer"></span>
+    </header>
+
+    <main class="konten">
+      <h2 class="judul">Laporkan ternak sakit</h2>
+      <p class="subjudul" style="margin-bottom:16px">Laporan Anda membantu peternak lain di sekitar waspada lebih awal.</p>
+
+      <div class="bagian"><span class="label-kecil">Jenis ternak</span></div>
+      <div class="chip-baris" id="pilih-spesies"></div>
+
+      <div class="medan">
+        <label for="penyakit">Penyakit atau gejala</label>
+        <input id="penyakit" type="text" maxlength="80" placeholder="Contoh: LSD, luka kulit bernanah" />
+      </div>
+      <div class="medan">
+        <label for="jumlah">Jumlah ternak sakit</label>
+        <input id="jumlah" type="number" min="1" max="100000" placeholder="Contoh: 3" />
+      </div>
+      <div class="medan">
+        <label for="kecamatan">Kecamatan atau wilayah</label>
+        <input id="kecamatan" type="text" maxlength="80" placeholder="Contoh: Kec. Cibiru" />
+      </div>
+      <div class="medan">
+        <label for="catatan">Catatan <span class="teks-redup" style="font-weight:400">(opsional)</span></label>
+        <textarea id="catatan" maxlength="300" placeholder="Kondisi ternak, sudah divaksin atau belum, dan lain-lain"></textarea>
+      </div>
+
+      <p class="pesan" id="pesan" role="alert"></p>
+      <button class="tombol" id="kirim" type="button">Kirim laporan</button>
+
+      <div class="bagian"><span class="label-kecil">Laporan saya</span></div>
+      <div id="laporan-saya"></div>
+
+      <div class="bagian"><span class="label-kecil">Laporan terbaru</span></div>
+      <div id="laporan-terbaru"></div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('lapor');
+
+    let spesiesDipilih = 'sapi';
+
+    el('pilih-spesies').innerHTML = Object.entries(SPESIES).map(([kode, s]) => `
+      <button class="chip ${kode === spesiesDipilih ? 'aktif' : ''}" type="button" data-spesies="${kode}">${s.nama}</button>
+    `).join('');
+
+    el('pilih-spesies').addEventListener('click', (e) => {
+      const tombol = e.target.closest('[data-spesies]');
+      if (!tombol) return;
+      spesiesDipilih = tombol.dataset.spesies;
+      document.querySelectorAll('#pilih-spesies .chip').forEach((n) => n.classList.toggle('aktif', n === tombol));
+    });
+
+    function barisLaporan(l, denganCatatan) {
+      return `<div class="wabah">
+        <span class="pil abu">${esc(spesiesInfo(l.spesies).nama)}</span>
+        <span class="baris-utama">
+          <span class="baris-judul">${esc(l.penyakit)}</span>
+          <span class="kota">${esc(l.kecamatan)} · ${Number(l.jumlah_sakit)} ekor · ${esc(formatTanggal(l.created_at))}</span>
+          ${denganCatatan && l.catatan ? `<span class="kota">${esc(l.catatan)}</span>` : ''}
+        </span>
+      </div>`;
+    }
+
+    function kosongLaporan(teks) {
+      return `<div class="kosong">
+        <span class="lingkaran" data-ikon="lapor"></span>
+        <p>${teks}</p>
+      </div>`;
+    }
+
+    async function muatLaporan() {
+      try {
+        const [milikSendiri, terbaru] = await Promise.all([
+          api('/api/laporan'),
+          api('/api/laporan/terbaru'),
+        ]);
+
+        el('laporan-saya').innerHTML = milikSendiri.laporan.length
+          ? `<div class="grup">${milikSendiri.laporan.map((l) => barisLaporan(l, true)).join('')}</div>`
+          : kosongLaporan('Anda belum pernah mengirim laporan.');
+
+        el('laporan-terbaru').innerHTML = terbaru.laporan.length
+          ? `<div class="grup">${terbaru.laporan.map((l) => barisLaporan(l, false)).join('')}</div>`
+          : kosongLaporan('Belum ada laporan dari peternak lain.');
+
+        el('badge-laporan').textContent = `${terbaru.laporan.length} laporan terbaru`;
+        pasangIkon();
+      } catch (err) {
+        el('laporan-terbaru').innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
+      }
+    }
+
+    el('kirim').addEventListener('click', async () => {
+      const data = {
+        spesies: spesiesDipilih,
+        penyakit: el('penyakit').value.trim(),
+        jumlah_sakit: Number(el('jumlah').value),
+        kecamatan: el('kecamatan').value.trim(),
+        catatan: el('catatan').value.trim(),
+      };
+
+      if (data.penyakit.length < 3) return setPesan('pesan', 'Isi penyakit atau gejala minimal 3 karakter.');
+      if (!Number.isInteger(data.jumlah_sakit) || data.jumlah_sakit < 1) return setPesan('pesan', 'Jumlah ternak sakit minimal 1.');
+      if (data.kecamatan.length < 3) return setPesan('pesan', 'Isi kecamatan atau wilayah minimal 3 karakter.');
+
+      el('kirim').disabled = true;
+      try {
+        await api('/api/laporan', { method: 'POST', body: data });
+        setPesan('pesan', 'Laporan terkirim.', 'sukses');
+        el('penyakit').value = '';
+        el('jumlah').value = '';
+        el('catatan').value = '';
+        toast('Laporan wabah terkirim.');
+        await muatLaporan();
+      } catch (err) {
+        setPesan('pesan', err.message);
+      } finally {
+        el('kirim').disabled = false;
+      }
+    });
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+      await muatLaporan();
+    })();
+  </script>
+</body>
+</html>

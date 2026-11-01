@@ -29,34 +29,6 @@ const REKOMENDASI = {
       'Madu dioleskan tipis pada nodul yang terbuka.',
     ],
   },
-  Scabies: {
-    medis: [
-      'Mandikan ternak dengan larutan akarisida sesuai dosis dari dokter hewan.',
-      'Potong bulu di area kulit yang terserang agar obat meresap.',
-      'Beri antibiotik bila sudah terjadi infeksi sekunder.',
-      'Pisahkan ternak sakit dan bersihkan kandang serta alas tidur.',
-      'Ulangi pengobatan sesuai jadwal yang dianjurkan.',
-    ],
-    herbal: [
-      'Oleskan campuran belerang halus + minyak kelapa pada kulit.',
-      'Air rebusan daun sirsak atau tembakau untuk memandikan kambing.',
-      'Minyak kelapa murni untuk melembapkan kulit yang bersisik.',
-    ],
-  },
-  Orf: {
-    medis: [
-      'Bersihkan keropeng dengan larutan antiseptik.',
-      'Beri salep antibiotik pada area luka.',
-      'Antibiotik untuk mencegah infeksi sekunder sesuai resep dokter hewan.',
-      'Pisahkan ternak sakit dari kawanan.',
-      'Vaksinasi kawanan yang berisiko tertular.',
-    ],
-    herbal: [
-      'Daun sirih tumbuk untuk dioleskan pada luka mulut.',
-      'Air kunyit untuk mempercepat proses mengeringnya keropeng.',
-      'Madu sebagai antiseptik alami pada luka.',
-    ],
-  },
   Coccidiosis: {
     medis: [
       'Beri koksidiostat sesuai dosis dan resep dokter hewan.',
@@ -132,6 +104,13 @@ const REKOMENDASI = {
   },
 };
 
+const SUMBER_VETERINER = [
+  'WOAH Terrestrial Animal Health Code — https://www.woah.org/en/what-we-do/standards/codes-and-manuals/terrestrial-code-online-access/',
+  'Merck Veterinary Manual — https://www.merckvetmanual.com/',
+  'FAO Animal Health — https://www.fao.org/animal-health/en/',
+  'Dinas Peternakan setempat untuk prosedur pelaporan dan vaksinasi di Indonesia.',
+];
+
 const DEFAULT_REKOMENDASI = {
   medis: [
     'Pantau kondisi ternak dan pisahkan bila gejalanya bertambah berat.',
@@ -141,10 +120,23 @@ const DEFAULT_REKOMENDASI = {
     'Berikan pakan bergizi dan air minum yang bersih.',
     'Cukupi vitamin untuk menjaga daya tahan tubuh ternak.',
   ],
+  sumber: SUMBER_VETERINER,
+};
+
+const ALIAS_REKOMENDASI = {
+  Scabies: 'Gangguan Kulit (Scabies/Orf)',
+  Orf: 'Gangguan Kulit (Scabies/Orf)',
 };
 
 function rekomendasiUntuk(penyakit) {
-  return REKOMENDASI[penyakit] || DEFAULT_REKOMENDASI;
+  const kunci = typeof penyakit === 'string' && Object.hasOwn(ALIAS_REKOMENDASI, penyakit)
+    ? ALIAS_REKOMENDASI[penyakit]
+    : penyakit;
+
+  if (typeof kunci !== 'string' || !Object.hasOwn(REKOMENDASI, kunci)) {
+    return DEFAULT_REKOMENDASI;
+  }
+  return { ...REKOMENDASI[kunci], sumber: SUMBER_VETERINER };
 }
 
 module.exports = { rekomendasiUntuk, REKOMENDASI };

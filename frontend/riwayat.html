@@ -44,10 +44,10 @@
     }
 
     function kartu(r) {
-      return `<button class="baris" type="button" data-id="${r.id}">
+      return `<button class="baris" type="button" data-id="${Number(r.id)}">
         <span class="baris-utama">
-          <span class="baris-judul">${r.penyakit}</span>
-          <span class="baris-meta">${spesiesInfo(r.spesies).nama} · ${formatTanggal(r.created_at)}</span>
+          <span class="baris-judul">${esc(r.penyakit)}</span>
+          <span class="baris-meta">${esc(spesiesInfo(r.spesies).nama)} · ${esc(formatTanggal(r.created_at))}</span>
         </span>
         <span class="pil ${kelasPil(r.confidence, r.penyakit)}">${persen(r.confidence)}</span>
         <span class="chevron" data-ikon="chevron"></span>
@@ -95,7 +95,7 @@
         renderFilter();
         renderDaftar();
       } catch (err) {
-        el('daftar').innerHTML = `<p class="pesan error">${err.message}</p>`;
+        el('daftar').innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
       }
     })();
   </script>

@@ -72,6 +72,13 @@ SPESIES_SPEC = {
     },
 }
 
+# Penyesuaian logit per kelas. Nilai positif menaikkan sensitivitas kelas tersebut.
+# LSD dinaikkan karena recall-nya rendah; konsekuensinya sebagian foto Sehat ikut
+# tertandai LSD. Untuk skrining, false negative LSD lebih berisiko.
+BIAS_KELAS = {
+    "sapi": {"Lumpy Skin Disease (LSD)": 0.66},
+}
+
 MIN_SISI = 64
 MAKS_RASIO = 3.0
 MIN_SIMPANG = 6.0
@@ -381,9 +388,18 @@ def latih_spesies(spesies: str, dataset_root: Path, ekstrak, periksa_saja: bool,
     W, b = latih_linear(X[latih_idx], y[latih_idx], len(kelas_daftar))
     suhu = kalibrasi_suhu(X[valid_idx] @ W + b, y[valid_idx]) if len(valid_idx) else 1.0
 
-    hasil = {"suhu": suhu, "kelas": kelas_daftar}
+    bias = np.zeros(len(kelas_daftar), dtype=np.float32)
+    for nama, nilai in BIAS_KELAS.get(spesies, {}).items():
+        if nama in kelas_daftar:
+            bias[kelas_daftar.index(nama)] = nilai
+
+    hasil = {
+        "suhu": suhu,
+        "kelas": kelas_daftar,
+        "bias": {nama: float(bias[i]) for i, nama in enumerate(kelas_daftar) if bias[i]},
+    }
     if len(uji_idx):
-        P = softmax((X[uji_idx] @ W + b) / suhu)
+        P = softmax((X[uji_idx] @ W + b + bias) / suhu)
         hasil.update(laporan_uji(P, y[uji_idx], kelas_daftar))
         print(f"  akurasi uji: {hasil['akurasi_uji'] * 100:.1f}%  ({hasil['jumlah_uji']} gambar)")
         for nama, info in hasil["per_kelas"].items():
@@ -392,7 +408,7 @@ def latih_spesies(spesies: str, dataset_root: Path, ekstrak, periksa_saja: bool,
 
     np.savez_compressed(
         MODEL_DIR / f"{spesies}.npz",
-        W=W, b=b, suhu=np.float32(suhu),
+        W=W, b=b, suhu=np.float32(suhu), bias=bias,
         kelas=np.array(kelas_daftar),
     )
     hasil["penyaringan"] = laporan

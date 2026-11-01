@@ -259,7 +259,7 @@ svg { display: block; }
   color: var(--ink);
   margin-bottom: 6px;
 }
-.medan input, .medan textarea {
+.medan input, .medan textarea, .medan select {
   width: 100%;
   min-height: 46px;
   padding: 12px 14px;
@@ -272,12 +272,13 @@ svg { display: block; }
 }
 .medan textarea { min-height: 74px; resize: vertical; }
 .medan input::placeholder, .medan textarea::placeholder { color: #a4b0a8; }
-.medan input:focus, .medan textarea:focus {
+.medan select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236c7c73' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m7 10 5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; background-size: 15px; padding-right: 38px; }
+.medan input:focus, .medan textarea:focus, .medan select:focus {
   outline: none;
   border-color: var(--hijau);
   box-shadow: 0 0 0 3px var(--hijau-tint);
 }
-.medan input:disabled { background: var(--abu-tint); }
+.medan input:disabled, .medan select:disabled { background: var(--abu-tint); }
 
 .pesan { font-size: 11px; text-align: center; }
 .pesan:empty { display: none; }

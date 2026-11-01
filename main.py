@@ -79,7 +79,6 @@ def main():
             "KUOTA_GRATIS": config.KUOTA_GRATIS,
             "AMBANG_PERINGATAN": config.AMBANG_KEYAKINAN_RENDAH,
             "UKURAN_MAKS": config.MAKS_UKURAN_FOTO,
-            "JWT_SECRET": config.KUNCI_TOKEN,
         },
     )
 

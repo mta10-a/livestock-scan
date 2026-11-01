@@ -22,8 +22,12 @@ MODEL_DIR = BASE / "model"
 BERKAS_EMBEDDER = MODEL_DIR / "efficientnet_lite0.tflite"
 
 EKSTENSI_DIIZINKAN = {"jpg", "jpeg", "png"}
+FORMAT_DIIZINKAN = {"JPEG", "PNG", "MPO"}
 UKURAN_MODEL = (224, 224)
 AMBANG_PERINGATAN = 0.70
+MAKS_PIKSEL = int(os.environ.get("MAKS_PIKSEL", 40_000_000))
+MAKS_SISI = int(os.environ.get("MAKS_SISI", 10_000))
+Image.MAX_IMAGE_PIXELS = MAKS_PIKSEL
 
 CIRI_KELAS = {
     "Sehat": [
@@ -76,12 +80,13 @@ class ModelKlasifikasi:
         self.spesies = spesies
         self.W = isi["W"].astype(np.float32)
         self.b = isi["b"].astype(np.float32)
+        self.bias = isi["bias"].astype(np.float32) if "bias" in isi.files else np.zeros_like(self.b)
         self.suhu = float(isi["suhu"])
         self.kelas = [str(k) for k in isi["kelas"]]
         self.nama = f"efficientnet-lite0+softmax-{spesies}-v1"
 
     def prediksi(self, embedding: np.ndarray) -> tuple[str, float, list[dict]]:
-        logits = (embedding @ self.W + self.b) / self.suhu
+        logits = (embedding @ self.W + self.b + self.bias) / self.suhu
         logits = logits - logits.max()
         exp = np.exp(logits)
         peluang = exp / exp.sum()
@@ -139,13 +144,26 @@ def praproses(isi: bytes):
 
     try:
         gambar = Image.open(io.BytesIO(isi))
-        gambar.load()
+    except Image.DecompressionBombError:
+        raise ValueError("Resolusi gambar terlalu besar (maksimal 40 MP).")
     except (UnidentifiedImageError, OSError):
         raise ValueError("Berkas bukan gambar yang valid.")
+
+    if gambar.format not in FORMAT_DIIZINKAN:
+        raise ValueError("Berkas bukan gambar JPG atau PNG yang valid.")
 
     lebar_asli, tinggi_asli = gambar.size
     if lebar_asli < 16 or tinggi_asli < 16:
         raise ValueError("Resolusi gambar terlalu kecil (minimal 16x16 piksel).")
+    if lebar_asli > MAKS_SISI or tinggi_asli > MAKS_SISI or lebar_asli * tinggi_asli > MAKS_PIKSEL:
+        raise ValueError("Resolusi gambar terlalu besar (maksimal 40 MP atau 10.000 px per sisi).")
+
+    try:
+        gambar.load()
+    except Image.DecompressionBombError:
+        raise ValueError("Resolusi gambar terlalu besar (maksimal 40 MP).")
+    except (UnidentifiedImageError, OSError):
+        raise ValueError("Berkas bukan gambar yang valid.")
 
     rgb = gambar.convert("RGB")
     kecil = rgb.resize(UKURAN_MODEL)
@@ -153,6 +171,9 @@ def praproses(isi: bytes):
     stat = ImageStat.Stat(kecil)
     kecerahan = sum(stat.mean) / 3.0
     kontras = sum(stat.stddev) / 3.0
+
+    if kecerahan > 245 and kontras < 2.0:
+        raise ValueError("Foto tampak kosong/polos. Unggah foto ternak yang jelas.")
 
     info = {
         "lebar_asli": lebar_asli,

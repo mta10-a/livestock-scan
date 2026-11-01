@@ -21,8 +21,13 @@
   <script>
     pasangLogo();
 
-    setTimeout(() => {
-      location.replace(getToken() ? 'beranda.html' : 'login.html');
+    setTimeout(async () => {
+      try {
+        await api('/api/me');
+        location.replace('beranda.html');
+      } catch {
+        location.replace('login.html');
+      }
     }, 450);
   </script>
 </body>

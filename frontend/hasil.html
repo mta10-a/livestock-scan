@@ -43,9 +43,10 @@
       const kunciCatatan = hasilnyaSehat(hasil.penyakit) && tingkat !== 'rendah' ? 'sehat' : tingkat;
 
       const rek = hasil.rekomendasi || {};
-      const fitur = (hasil.fitur_visual || []).map((f) => `<li>${f}</li>`).join('');
-      const medis = (rek.medis || []).map((m) => `<li>${m}</li>`).join('');
-      const herbal = (rek.herbal || []).map((m) => `<li>${m}</li>`).join('');
+      const fitur = (hasil.fitur_visual || []).map((f) => `<li>${esc(f)}</li>`).join('');
+      const medis = (rek.medis || []).map((m) => `<li>${esc(m)}</li>`).join('');
+      const herbal = (rek.herbal || []).map((m) => `<li>${esc(m)}</li>`).join('');
+      const sumber = (rek.sumber || []).map((s) => `<li>${esc(s)}</li>`).join('');
       const kf = hasil.kualitas_foto;
 
       el('konten').innerHTML = `
@@ -62,8 +63,8 @@
             </div>
           </div>
 
-          <div class="penyakit">${hasil.penyakit}</div>
-          <div class="meta-hasil">${s.nama} · keyakinan ${tingkat} · ${hasil.model || 'model tidak tercatat'}</div>
+          <div class="penyakit">${esc(hasil.penyakit)}</div>
+          <div class="meta-hasil">${esc(s.nama)} · keyakinan ${tingkat} · ${esc(hasil.model || 'model tidak tercatat')}</div>
 
           ${kf ? `<p class="kecil teks-redup" style="margin-top:12px">
             Foto ${kf.lebar_asli}×${kf.tinggi_asli} px dinormalisasi ke ${kf.ukuran_model.join('×')} ·
@@ -83,7 +84,7 @@
              </div>`,
           tinggi: `<div class="catatan bahaya">
                ${IKON.peringatan}
-               <span><b>Perlu penanganan segera.</b> Ternak terindikasi ${hasil.penyakit} dengan keyakinan
+               <span><b>Perlu penanganan segera.</b> Ternak terindikasi ${esc(hasil.penyakit)} dengan keyakinan
                ${persen(c)}. Pisahkan ternak yang sakit dan hubungi dokter hewan.</span>
              </div>`,
           sehat: `<div class="catatan aman">
@@ -95,7 +96,7 @@
 
         ${hasil.gejala ? `
           <div class="bagian"><span class="label-kecil">Catatan gejala</span></div>
-          <div class="kartu"><p class="sedang">${hasil.gejala}</p></div>` : ''}
+          <div class="kartu"><p class="sedang">${esc(hasil.gejala)}</p></div>` : ''}
 
         <div class="bagian"><span class="label-kecil">Ciri khas kelas terpilih</span></div>
         <div class="kartu"><ul class="daftar">${fitur || '<li>Tidak ada catatan.</li>'}</ul></div>
@@ -116,7 +117,31 @@
             <span data-ikon="herbal" style="width:17px;height:17px;color:#7d9b3e"></span>
           </div>
           <ul class="daftar herbal">${herbal || '<li>Belum ada rekomendasi.</li>'}</ul>
-          <p class="kecil teks-redup" style="margin-top:8px">Herbal bersifat pendukung, bukan pengganti pengobatan medis.</p>
+          <p class="kecil teks-redup" style="margin-top:8px">Rekomendasi disusun dari rujukan umum dan belum divalidasi dokter hewan. Herbal bersifat pendukung, bukan pengganti pengobatan medis.</p>
+        </div>
+
+        ${sumber ? `
+          <div class="bagian"><span class="label-kecil">Rujukan veteriner</span></div>
+          <div class="kartu"><ul class="daftar">${sumber}</ul></div>
+        ` : ''}
+
+        <div class="bagian"><span class="label-kecil">Kirim ke peternak</span></div>
+        <div class="grup">
+          <button class="baris" type="button" id="tombol-bagikan">
+            ${IKON.bagikan}
+            <span class="baris-utama">
+              <span class="baris-judul">Bagikan hasil</span>
+              <span class="baris-meta">Kirim ringkasan lewat WhatsApp atau aplikasi lain</span>
+            </span>
+            <span class="chevron" data-ikon="chevron"></span>
+          </button>
+          <button class="baris" type="button" id="tombol-salin">
+            ${IKON.salin}
+            <span class="baris-utama">
+              <span class="baris-judul">Salin ringkasan</span>
+              <span class="baris-meta">Tempel ke catatan atau pesan</span>
+            </span>
+          </button>
         </div>
 
         <div style="display:flex;gap:10px;margin-top:22px">
@@ -128,6 +153,8 @@
       el('badge-tanggal').textContent = formatTanggal(hasil.created_at);
       pasangIkon();
       pasangLogo();
+      el('tombol-bagikan').onclick = () => bagikanHasil(hasil);
+      el('tombol-salin').onclick = () => salinRingkasan(hasil);
     }
 
     (async () => {
@@ -140,7 +167,7 @@
           const { hasil } = await api('/api/riwayat/' + id);
           render(hasil);
         } catch (err) {
-          el('konten').innerHTML = `<p class="pesan error">${err.message}</p>`;
+          el('konten').innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
         }
         return;
       }

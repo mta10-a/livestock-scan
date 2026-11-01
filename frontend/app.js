@@ -1,4 +1,4 @@
-const API_BASE = location.origin === 'http://localhost:3000' ? '' : 'http://localhost:3000';
+const API_BASE = location.protocol.startsWith('http') ? '' : 'http://localhost:3000';
 
 const AMBANG_PERINGATAN = 0.70;
 const AMBANG_TINGGI = 0.85;
@@ -7,9 +7,9 @@ const UKURAN_MAKS = 5 * 1024 * 1024;
 const TIPE_DIIZINKAN = ['image/jpeg', 'image/jpg', 'image/png'];
 
 const SPESIES = {
-  sapi: { nama: 'Sapi', penyakit: ['Penyakit Mulut dan Kuku (PMK)', 'Lumpy Skin Disease (LSD)'] },
-  kambing: { nama: 'Kambing', penyakit: ['Scabies', 'Orf'] },
-  ayam: { nama: 'Ayam', penyakit: ['Coccidiosis'] },
+  sapi: { nama: 'Sapi', penyakit: ['Lumpy Skin Disease (LSD)', 'Penyakit Mulut dan Kuku (PMK)', 'Sehat'] },
+  kambing: { nama: 'Kambing', penyakit: ['Gangguan Kulit (Scabies/Orf)', 'Sehat'] },
+  ayam: { nama: 'Ayam', penyakit: ['Coccidiosis', 'Salmonellosis', 'Sehat', 'Tetelo (Newcastle Disease)'] },
 };
 
 const IKON = (() => {
@@ -26,6 +26,8 @@ const IKON = (() => {
     dokumen: bungkus('<path d="M7.4 3.6h6l4.2 4.2v12a1.4 1.4 0 0 1-1.4 1.4H7.4A1.4 1.4 0 0 1 6 19.8V5a1.4 1.4 0 0 1 1.4-1.4Z"/><path d="M13.4 3.6V7.8h4.2"/><path d="M9 13h6M9 16.4h4"/>'),
     token: bungkus('<circle cx="12" cy="12" r="8"/><path d="M12 7.8v8.4M9.4 10.4h5.2M9.4 13.6h5.2"/>'),
     lapor: bungkus('<path d="M6 20.4V4.4"/><path d="M6 5.2h9.6l-1.4 3 1.4 3H6"/>'),
+    bagikan: bungkus('<circle cx="17.6" cy="5.6" r="2.6"/><circle cx="6.4" cy="12" r="2.6"/><circle cx="17.6" cy="18.4" r="2.6"/><path d="m8.8 10.8 6.3-3.7M8.8 13.2l6.3 3.7"/>'),
+    salin: bungkus('<rect x="8.8" y="3.6" width="10.6" height="12.8" rx="1.6"/><path d="M15.4 20.4H6.6A1.8 1.8 0 0 1 4.8 18.6V7.6"/>'),
     peringatan: bungkus('<path d="M12 4.4 3.2 19.6h17.6L12 4.4Z"/><path d="M12 10v4.2M12 16.9h.01"/>'),
     cek: bungkus('<circle cx="12" cy="12" r="8.4"/><path d="m8.3 12.3 2.5 2.5 4.9-5.2"/>'),
     chevron: bungkus('<path d="m9.5 6.5 5.5 5.5-5.5 5.5"/>'),
@@ -88,24 +90,23 @@ function navBawah(aktif) {
     ${item('beranda', 'Beranda', 'beranda.html')}
     ${item('riwayat', 'Riwayat', 'riwayat.html')}
     ${item('scan', 'Scan', 'scan.html')}
-    ${item('peta', 'Peta', 'beranda.html#wabah')}
+    ${item('lapor', 'Lapor', 'lapor.html')}
   </nav>`;
 }
 
-const getToken = () => localStorage.getItem('token');
-const setToken = (t) => localStorage.setItem('token', t);
-const hapusToken = () => localStorage.removeItem('token');
-
-function keluar() {
-  hapusToken();
+async function keluar() {
+  try { await api('/api/logout', { method: 'POST' }); } catch {}
   sessionStorage.removeItem('hasil_scan');
+  sessionStorage.removeItem('hasil_id');
   location.replace('login.html');
 }
 
+const esc = (nilai) => String(nilai ?? '').replace(/[&<>"']/g, (c) => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[c]));
+
 async function api(path, { method = 'GET', body, formData } = {}) {
   const headers = {};
-  const token = getToken();
-  if (token) headers.Authorization = 'Bearer ' + token;
 
   let payload;
   if (formData) payload = formData;
@@ -116,7 +117,12 @@ async function api(path, { method = 'GET', body, formData } = {}) {
 
   let res;
   try {
-    res = await fetch(API_BASE + path, { method, headers, body: payload });
+    res = await fetch(API_BASE + path, {
+      method,
+      headers,
+      body: payload,
+      credentials: 'include',
+    });
   } catch {
     throw new Error('Tidak dapat terhubung ke server. Pastikan backend di http://localhost:3000 berjalan.');
   }
@@ -129,11 +135,9 @@ async function api(path, { method = 'GET', body, formData } = {}) {
 }
 
 async function butuhLogin() {
-  if (!getToken()) { location.replace('login.html'); return null; }
   try {
     return await api('/api/me');
   } catch {
-    hapusToken();
     location.replace('login.html');
     return null;
   }
@@ -180,3 +184,67 @@ const ambilHasil = () => {
   try { return JSON.parse(sessionStorage.getItem('hasil_scan')); }
   catch { return null; }
 };
+
+const rupiah = (nilai) => 'Rp ' + Number(nilai || 0).toLocaleString('id-ID');
+
+function ringkasanHasil(hasil) {
+  const s = spesiesInfo(hasil.spesies);
+  const isi = [
+    'Hasil pemeriksaan LivestockHealth Scan',
+    `Ternak: ${s.nama}`,
+    `Indikasi: ${hasil.penyakit}`,
+    `Keyakinan: ${persen(hasil.confidence)}`,
+    `Tanggal: ${formatTanggal(hasil.created_at)}`,
+  ];
+  if (hasil.gejala) isi.push(`Catatan gejala: ${hasil.gejala}`);
+  isi.push('Hasil ini indikasi awal, bukan diagnosis. Tetap konsultasikan ke dokter hewan.');
+  return isi.join('\n');
+}
+
+async function salinTeks(teks) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(teks);
+      return true;
+    }
+  } catch {}
+
+  try {
+    const area = document.createElement('textarea');
+    area.value = teks;
+    area.setAttribute('readonly', '');
+    area.style.position = 'fixed';
+    area.style.top = '-1000px';
+    document.body.appendChild(area);
+    area.select();
+    const berhasil = document.execCommand('copy');
+    area.remove();
+    return berhasil;
+  } catch {
+    return false;
+  }
+}
+
+async function bagikanHasil(hasil) {
+  const teks = ringkasanHasil(hasil);
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Hasil pemeriksaan ternak', text: teks });
+      return;
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+    }
+  }
+
+  if (await salinTeks(teks)) {
+    toast('Ringkasan hasil disalin. Tinggal tempel di WhatsApp atau pesan lain.');
+  } else {
+    toast('Perangkat ini tidak mendukung berbagi otomatis. Salin manual dari halaman hasil.');
+  }
+}
+
+async function salinRingkasan(hasil) {
+  const berhasil = await salinTeks(ringkasanHasil(hasil));
+  toast(berhasil ? 'Ringkasan hasil disalin.' : 'Gagal menyalin. Coba lagi.');
+}
