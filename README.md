@@ -92,14 +92,17 @@ ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
   nilainya makin merah, karena artinya indikasi makin kuat dan perlu segera
   ditangani. Di bawah 70% berwarna hijau dengan catatan bahwa hasilnya belum
   bisa dipercaya. Hasil "Sehat" tetap hijau walau keyakinannya tinggi.
-- "Bagikan hasil" memakai Web Share API bila tersedia; kalau tidak, ringkasan
-  hasil disalin ke papan klip untuk ditempel di WhatsApp atau pesan lain.
+- "Kirim lewat WhatsApp" membuka `wa.me` dengan ringkasan hasil yang sudah
+  terisi, lalu pengguna memilih kontak tujuan. Bisa juga dibagikan lewat
+  aplikasi lain (Web Share API) atau disalin ke papan klip.
+- "Cetak lembar hasil" memakai gaya `@media print`, jadi hasilnya bisa
+  disimpan sebagai PDF atau dicetak untuk dibawa ke dokter hewan.
 - "Wabah di sekitar" di Beranda menampilkan laporan yang benar-benar dikirim
   pengguna, bukan data contoh. Peta wabah (RF-19) masih ditunda.
 - Token scan ditukar memakai kode dari agen. Kode demo `LHS-DEMO-3` dan
   `LHS-DEMO-10` dicetak di konsol backend saat pertama kali dijalankan.
   Payment gateway (RF-28) belum dikerjakan, jadi belum ada pembayaran daring.
-
+  
 ## Tautan
 
 - Video presentasi YouTube: https://youtu.be/3ceq7c5ijuI
