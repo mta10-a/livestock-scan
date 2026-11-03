@@ -19,10 +19,11 @@
 
   <script src="app.js"></script>
   <script>
-    pasangLogo();
+    try { pasangLogo(); } catch {}
 
     setTimeout(async () => {
       try {
+        if (typeof api !== 'function') throw new Error('app.js tidak termuat');
         await api('/api/me');
         location.replace('beranda.html');
       } catch {
