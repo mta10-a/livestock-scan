@@ -577,3 +577,49 @@ svg { display: block; }
   box-shadow: 0 10px 26px rgba(18, 36, 28, 0.28);
 }
 .toast.tampil { opacity: 1; transform: translate(-50%, 0); }
+
+.cetak-saja { display: none; }
+
+@media print {
+  @page { size: A4; margin: 14mm; }
+
+  html, body { height: auto; }
+
+  body {
+    overflow: visible;
+    background: #fff;
+    color: #000;
+    font-size: 11pt;
+  }
+
+  .app {
+    width: auto;
+    max-width: none;
+    height: auto;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #fff;
+  }
+
+  .bilah-atas, #nav-bawah, .nav-bawah, .grup, .tombol, .bagian-kirim { display: none !important; }
+
+  .konten {
+    height: auto;
+    overflow: visible;
+    padding: 0;
+  }
+
+  .cetak-saja { display: block; }
+
+  .cetak-kepala { margin-bottom: 9mm; padding-bottom: 4mm; border-bottom: 2px solid var(--hijau); }
+  .cetak-judul { font-size: 16pt; font-weight: 700; color: var(--hijau); }
+  .cetak-ket { margin-top: 2mm; font-size: 9.5pt; color: #444; }
+  .cetak-kaki { margin-top: 8mm; padding-top: 3mm; border-top: 1px solid #bbb; font-size: 8.5pt; color: #555; }
+
+  .hero-hasil { padding-top: 0; }
+
+  .kartu, .catatan, .hero-hasil { break-inside: avoid; box-shadow: none; }
+
+  .kartu { border: 1px solid #ccc; }
+}

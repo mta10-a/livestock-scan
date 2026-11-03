@@ -268,7 +268,7 @@ async function main() {
   cek('RF-27 kode yang sama tidak bisa dipakai dua kali -> 409', r.status === 409, String(r.status));
 
   r = await kirim(B1, '/api/token/transaksi', { token: tokenA });
-  cek('RF-27 riwayat penukaran tercatat', r.status === 200 && r.data.transaksi?.length === 1, JSON.stringify(r.data).slice(0, 120));
+  cek('RF-29 riwayat transaksi tercatat', r.status === 200 && r.data.transaksi?.length === 1, JSON.stringify(r.data).slice(0, 120));
 
   r = await kirim(B1, '/api/token/tukar', { method: 'POST', body: { kode: 'LHS-DEMO-3' } });
   cek('RF-27 tukar token tanpa login -> 401', r.status === 401, String(r.status));

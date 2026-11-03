@@ -50,6 +50,11 @@
       const kf = hasil.kualitas_foto;
 
       el('konten').innerHTML = `
+        <div class="cetak-saja cetak-kepala">
+          <div class="cetak-judul">LivestockHealth Scan</div>
+          <div class="cetak-ket">Lembar hasil pemeriksaan ${esc(s.nama.toLowerCase())} · ${esc(formatTanggal(hasil.created_at))}</div>
+        </div>
+
         <section class="hero-hasil">
           <div class="donat-bungkus">
             <svg class="donat ${kelasBar(c, hasil.penyakit)}" viewBox="0 0 120 120" aria-hidden="true">
@@ -125,13 +130,21 @@
           <div class="kartu"><ul class="daftar">${sumber}</ul></div>
         ` : ''}
 
-        <div class="bagian"><span class="label-kecil">Kirim ke peternak</span></div>
+        <div class="bagian bagian-kirim"><span class="label-kecil">Kirim ke peternak</span></div>
         <div class="grup">
+          <button class="baris" type="button" id="tombol-wa">
+            ${IKON.chat}
+            <span class="baris-utama">
+              <span class="baris-judul">Kirim lewat WhatsApp</span>
+              <span class="baris-meta">Pilih kontak, ringkasan hasil langsung terisi</span>
+            </span>
+            <span class="chevron" data-ikon="chevron"></span>
+          </button>
           <button class="baris" type="button" id="tombol-bagikan">
             ${IKON.bagikan}
             <span class="baris-utama">
               <span class="baris-judul">Bagikan hasil</span>
-              <span class="baris-meta">Kirim ringkasan lewat WhatsApp atau aplikasi lain</span>
+              <span class="baris-meta">Kirim ringkasan lewat aplikasi lain</span>
             </span>
             <span class="chevron" data-ikon="chevron"></span>
           </button>
@@ -142,7 +155,17 @@
               <span class="baris-meta">Tempel ke catatan atau pesan</span>
             </span>
           </button>
+          <button class="baris" type="button" id="tombol-cetak">
+            ${IKON.cetak}
+            <span class="baris-utama">
+              <span class="baris-judul">Cetak lembar hasil</span>
+              <span class="baris-meta">Simpan sebagai PDF atau cetak untuk dokter hewan</span>
+            </span>
+            <span class="chevron" data-ikon="chevron"></span>
+          </button>
         </div>
+
+        <p class="cetak-saja cetak-kaki">Hasil ini dihasilkan model AI LivestockHealth Scan dan bersifat indikasi awal, bukan diagnosis resmi dokter hewan.</p>
 
         <div style="display:flex;gap:10px;margin-top:22px">
           <a class="tombol garis" href="riwayat.html">Riwayat</a>
@@ -153,8 +176,10 @@
       el('badge-tanggal').textContent = formatTanggal(hasil.created_at);
       pasangIkon();
       pasangLogo();
+      el('tombol-wa').onclick = () => kirimWhatsApp(hasil);
       el('tombol-bagikan').onclick = () => bagikanHasil(hasil);
       el('tombol-salin').onclick = () => salinRingkasan(hasil);
+      el('tombol-cetak').onclick = () => window.print();
     }
 
     (async () => {

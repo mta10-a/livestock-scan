@@ -30,7 +30,9 @@ aplikasinya di browser. Nomor port dan batas pemakaian diatur di `config.py`.
 
 ## Progres fitur
 
-Terpakai **20 dari 40** kebutuhan fungsional (50%).
+Terpakai **22 dari 40** kebutuhan fungsional (55%). Kalau dihitung ketat,
+RF-27 baru sebatas penukaran kode token (belum ada pembayaran daring), jadi
+hitungan amannya 21 RF (52,5%).
 
 | Kode | Fitur |
 |---|---|
@@ -51,12 +53,15 @@ Terpakai **20 dari 40** kebutuhan fungsional (50%).
 | RF-16 | Penyimpanan hasil diagnosis |
 | RF-17 | Pengiriman hasil ke peternak |
 | RF-18 | Riwayat medis |
+| RF-20 | Cetak lembar hasil pemeriksaan |
 | RF-24 | Laporan wabah |
 | RF-26 | Kuota gratis 3x scan |
 | RF-27 | Pembelian/penukaran token |
+| RF-29 | Riwayat transaksi token |
 
-Sisanya masih ditunda: konsultasi dokter hewan, e-sertifikat, peta wabah,
-verifikasi dokter, payment gateway, dan dashboard admin.
+Sisanya masih ditunda: konsultasi dokter hewan, verifikasi e-sertifikat dan
+tanda tangan dokter, peta wabah, verifikasi laporan, verifikasi dokter,
+payment gateway, dan dashboard admin.
 
 ## Model AI
 
@@ -122,8 +127,11 @@ ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
   nilainya makin merah, karena artinya indikasi makin kuat dan perlu segera
   ditangani. Di bawah 70% berwarna hijau dengan catatan bahwa hasilnya belum
   bisa dipercaya. Hasil "Sehat" tetap hijau walau keyakinannya tinggi.
-- "Bagikan hasil" memakai Web Share API bila tersedia; kalau tidak, ringkasan
-  hasil disalin ke papan klip untuk ditempel di WhatsApp atau pesan lain.
+- "Kirim lewat WhatsApp" membuka `wa.me` dengan ringkasan hasil yang sudah
+  terisi, lalu pengguna memilih kontak tujuan. Bisa juga dibagikan lewat
+  aplikasi lain (Web Share API) atau disalin ke papan klip.
+- "Cetak lembar hasil" memakai gaya `@media print`, jadi hasilnya bisa
+  disimpan sebagai PDF atau dicetak untuk dibawa ke dokter hewan.
 - "Wabah di sekitar" di Beranda menampilkan laporan yang benar-benar dikirim
   pengguna, bukan data contoh. Peta wabah (RF-19) masih ditunda.
 - Token scan ditukar memakai kode dari agen. Kode demo `LHS-DEMO-3` dan
