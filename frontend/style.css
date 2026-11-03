@@ -1,7 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
 
 :root {
-
+  
   --hijau: #00673d;
   --hijau-gelap: #00532f;
   --hijau-tint: #e7f0ea;
@@ -382,7 +382,6 @@ svg { display: block; }
 .donat { width: 148px; height: 148px; transform: rotate(-90deg); }
 .donat circle { fill: none; stroke-width: 11; }
 .donat .jejak { stroke: var(--garis); }
-
 .donat .nilai { stroke: var(--hijau); stroke-linecap: round; transition: stroke-dashoffset .7s ease; }
 .donat.sedang .nilai { stroke: #c98a12; }
 .donat.tinggi .nilai { stroke: var(--merah); }
@@ -425,7 +424,6 @@ svg { display: block; }
 .catatan.hati { background: var(--kuning-tint); color: #6b4900; }
 .catatan.bahaya { background: var(--merah-tint); color: #8a1f19; }
 .catatan.netral { background: var(--abu-tint); color: var(--ink-2); }
-.catatan.aman { background: var(--hijau-tint); color: var(--hijau-gelap); }
 
 .daftar { list-style: none; }
 .daftar li {

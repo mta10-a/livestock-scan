@@ -61,6 +61,14 @@ ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
 | POST /api/scan | Validasi, cek kuota, panggil layanan AI, simpan hasil |
 | GET /api/riwayat | Daftar pemeriksaan milik pengguna |
 | GET /api/riwayat/:id | Rincian satu pemeriksaan |
+| GET /api/profil | Profil peternakan pengguna |
+| PUT /api/profil | Simpan profil peternakan |
+| GET /api/laporan | Laporan wabah milik pengguna |
+| GET /api/laporan/terbaru | Laporan wabah terbaru dari semua pengguna |
+| POST /api/laporan | Kirim laporan wabah |
+| GET /api/token/paket | Daftar paket token |
+| POST /api/token/tukar | Tukar kode token menjadi kuota |
+| GET /api/token/transaksi | Riwayat penukaran token |
 | GET /health (Flask) | Status layanan AI dan model yang aktif |
 | POST /predict (Flask) | Analisis foto: penyakit dan tingkat keyakinan |
 

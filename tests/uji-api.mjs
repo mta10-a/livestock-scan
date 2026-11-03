@@ -139,7 +139,7 @@ async function main() {
   form.append('gambar', fotoJpeg());
   form.append('gejala', 'luka di mulut');
   r = await kirim(B1, '/api/scan', { method: 'POST', token: tokenA, form });
-  cek('RF-05 s.d RF-17 scan valid -> 201', r.status === 201, JSON.stringify(r.data).slice(0, 200));
+  cek('RF-05 s.d RF-16 scan valid -> 201', r.status === 201, JSON.stringify(r.data).slice(0, 200));
   cek('RF-09/11 hasil berisi penyakit', typeof r.data.hasil?.penyakit === 'string' && r.data.hasil.penyakit.length > 0);
   cek('RF-12 confidence 0..1', r.data.hasil?.confidence > 0 && r.data.hasil.confidence <= 1, String(r.data.hasil?.confidence));
   cek('RF-10 fitur visual terisi', Array.isArray(r.data.hasil?.fitur_visual) && r.data.hasil.fitur_visual.length > 0);
@@ -184,6 +184,94 @@ async function main() {
 
   r = await kirim(B1, '/api/riwayat', { token: tokenA });
   cek('RF-16 riwayat bertambah jadi 3', r.data.riwayat?.length === 3, String(r.data.riwayat?.length));
+
+  r = await kirim(B1, '/api/profil', { token: tokenA });
+  cek('RF-03 profil awal -> 200', r.status === 200 && r.data.email === emailA, String(r.status));
+
+  r = await kirim(B1, '/api/profil', {
+    method: 'PUT',
+    token: tokenA,
+    body: {
+      nama_peternakan: 'Kandang Sumber Rejeki',
+      alamat: 'Kec. Cibiru',
+      jenis_ternak: 'sapi',
+      jumlah_ternak: 12,
+    },
+  });
+  cek(
+    'RF-03 simpan profil -> 200',
+    r.status === 200 && r.data.profil?.nama_peternakan === 'Kandang Sumber Rejeki',
+    JSON.stringify(r.data).slice(0, 160)
+  );
+  cek('RF-03 jumlah ternak tersimpan', r.data.profil?.jumlah_ternak === 12, String(r.data.profil?.jumlah_ternak));
+
+  r = await kirim(B1, '/api/profil', { method: 'PUT', token: tokenA, body: { jenis_ternak: 'kucing' } });
+  cek('RF-03 jenis ternak tidak valid -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/profil', { method: 'PUT', token: tokenA, body: { jumlah_ternak: -2 } });
+  cek('RF-03 jumlah ternak negatif -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/profil', { method: 'PUT', body: { nama_peternakan: 'Tanpa Token' } });
+  cek('RF-03 simpan profil tanpa token -> 401', r.status === 401, String(r.status));
+
+  r = await kirim(B1, '/api/laporan', {
+    method: 'POST',
+    token: tokenA,
+    body: {
+      spesies: 'sapi',
+      penyakit: 'Lumpy Skin Disease (LSD)',
+      jumlah_sakit: 3,
+      kecamatan: 'Kec. Cibiru',
+      catatan: 'Belum divaksin',
+    },
+  });
+  cek('RF-24 kirim laporan wabah -> 201', r.status === 201 && r.data.laporan?.jumlah_sakit === 3, JSON.stringify(r.data).slice(0, 160));
+  cek('RF-24 laporan ditandai milik sendiri', r.data.laporan?.milik_sendiri === true);
+
+  r = await kirim(B1, '/api/laporan', {
+    method: 'POST',
+    token: tokenA,
+    body: { spesies: 'sapi', penyakit: 'LSD', jumlah_sakit: 0, kecamatan: 'Kec. Cibiru' },
+  });
+  cek('RF-24 jumlah ternak sakit 0 -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/laporan', {
+    method: 'POST',
+    token: tokenA,
+    body: { spesies: 'kucing', penyakit: 'LSD', jumlah_sakit: 1, kecamatan: 'Kec. Cibiru' },
+  });
+  cek('RF-24 spesies tidak valid -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/laporan', { token: tokenA });
+  cek('RF-24 laporan saya berisi 1', r.status === 200 && r.data.laporan?.length === 1, JSON.stringify(r.data).slice(0, 120));
+
+  r = await kirim(B1, '/api/laporan/terbaru', { token: tokenA });
+  cek(
+    'RF-24 laporan terbaru memuat laporan baru',
+    Array.isArray(r.data.laporan) && r.data.laporan.some((l) => l.kecamatan === 'Kec. Cibiru'),
+    String(r.data.laporan?.length)
+  );
+
+  r = await kirim(B1, '/api/laporan', {});
+  cek('RF-24 laporan tanpa token -> 401', r.status === 401, String(r.status));
+
+  r = await kirim(B1, '/api/token/paket', { token: tokenA });
+  cek('RF-27 daftar paket token -> 200', r.status === 200 && r.data.paket?.length >= 3, String(r.status));
+
+  r = await kirim(B1, '/api/token/tukar', { method: 'POST', token: tokenA, body: { kode: 'KODE-PALSU' } });
+  cek('RF-27 kode token tidak dikenal -> 404', r.status === 404, String(r.status));
+
+  r = await kirim(B1, '/api/token/tukar', { method: 'POST', token: tokenA, body: { kode: 'LHS-DEMO-3' } });
+  cek('RF-27 tukar kode token -> 201 + kuota bertambah', r.status === 201 && r.data.tambah === 3 && r.data.sisa_scan === 3, JSON.stringify(r.data));
+
+  r = await kirim(B1, '/api/token/tukar', { method: 'POST', token: tokenA, body: { kode: 'LHS-DEMO-3' } });
+  cek('RF-27 kode yang sama tidak bisa dipakai dua kali -> 409', r.status === 409, String(r.status));
+
+  r = await kirim(B1, '/api/token/transaksi', { token: tokenA });
+  cek('RF-27 riwayat penukaran tercatat', r.status === 200 && r.data.transaksi?.length === 1, JSON.stringify(r.data).slice(0, 120));
+
+  r = await kirim(B1, '/api/token/tukar', { method: 'POST', body: { kode: 'LHS-DEMO-3' } });
+  cek('RF-27 tukar token tanpa login -> 401', r.status === 401, String(r.status));
 
   const emailB = emailUnik();
   const rb = await kirim(B1, '/api/register', { method: 'POST', body: { nama: 'Siti Ternak', email: emailB, password: 'rahasia123' } });
