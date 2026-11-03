@@ -187,4 +187,3 @@ if __name__ == "__main__":
     print(f"[ai-service] pra-pemrosesan gambar: PIL aktif, masukan {UKURAN_MODEL}")
     print(f"[ai-service] model klasifikasi DUMMY berjalan di http://localhost:{port}")
     app.run(host="127.0.0.1", port=port, debug=False)
-    
