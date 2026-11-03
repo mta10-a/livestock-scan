@@ -76,7 +76,8 @@ ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
 
 - Hasilnya **indikasi awal, bukan diagnosis**. Tetap perlu dikonfirmasi dokter hewan.
 - Rekomendasi medis/herbal **belum divalidasi dokter hewan**; status dan rujukan
-  umumnya ada di `docs/validasi-rekomendasi.md`.
+  umumnya ada di `docs/validasi-rekomendasi.md`. Halaman hasil juga menampilkan
+  daftar rujukan veteriner (WOAH/FAO/Merck Veterinary Manual).
 - Kata sandi disimpan dalam bentuk hash, bukan teks terbaca.
 - Sesi browser memakai cookie **httpOnly + SameSite=Lax**, bukan localStorage.
   Logout mencabut token di server, dan halaman beranda/scan/hasil/riwayat
@@ -91,8 +92,13 @@ ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
   nilainya makin merah, karena artinya indikasi makin kuat dan perlu segera
   ditangani. Di bawah 70% berwarna hijau dengan catatan bahwa hasilnya belum
   bisa dipercaya. Hasil "Sehat" tetap hijau walau keyakinannya tinggi.
-- Bagian "Wabah di sekitar" di Beranda tidak menampilkan data contoh sebagai
-  wabah nyata; fitur peta wabah memang belum dikerjakan.
+- "Bagikan hasil" memakai Web Share API bila tersedia; kalau tidak, ringkasan
+  hasil disalin ke papan klip untuk ditempel di WhatsApp atau pesan lain.
+- "Wabah di sekitar" di Beranda menampilkan laporan yang benar-benar dikirim
+  pengguna, bukan data contoh. Peta wabah (RF-19) masih ditunda.
+- Token scan ditukar memakai kode dari agen. Kode demo `LHS-DEMO-3` dan
+  `LHS-DEMO-10` dicetak di konsol backend saat pertama kali dijalankan.
+  Payment gateway (RF-28) belum dikerjakan, jadi belum ada pembayaran daring.
 
 ## Tautan
 
