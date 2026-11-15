@@ -180,7 +180,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
+app.use(express.static(path.join(__dirname, '..', 'frontend'), {
+  setHeaders: (res) => res.setHeader('Cache-Control', 'no-store, must-revalidate'),
+}));
 
 const unggah = multer({
   storage: multer.memoryStorage(),
