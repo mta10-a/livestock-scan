@@ -48,6 +48,10 @@
       const herbal = (rek.herbal || []).map((m) => `<li>${esc(m)}</li>`).join('');
       const sumber = (rek.sumber || []).map((s) => `<li>${esc(s)}</li>`).join('');
       const kf = hasil.kualitas_foto;
+      const pendapat = hasil.pendapat_kedua;
+      const saranPendapat = pendapat && Array.isArray(pendapat.saran)
+        ? pendapat.saran.map((s) => `<li>${esc(s)}</li>`).join('')
+        : '';
 
       el('konten').innerHTML = `
         <div class="cetak-saja cetak-kepala">
@@ -105,6 +109,20 @@
 
         <div class="bagian"><span class="label-kecil">Ciri khas kelas terpilih</span></div>
         <div class="kartu"><ul class="daftar">${fitur || '<li>Tidak ada catatan.</li>'}</ul></div>
+
+        ${pendapat ? `
+          <div class="bagian"><span class="label-kecil">Pendapat kedua</span></div>
+          <div class="kartu">
+            <div class="baris-antara" style="margin-bottom:10px">
+              <span class="tebal sedang">Penilaian AI umum</span>
+              <span class="pil ${pendapat.sejalan ? 'hijau' : 'kuning'}">${pendapat.sejalan ? 'sejalan' : 'beda pendapat'}</span>
+            </div>
+            ${pendapat.kesan ? `<p class="sedang"><b>Kesan foto:</b> ${esc(pendapat.kesan)}</p>` : ''}
+            <p class="sedang" style="margin-top:6px">${esc(pendapat.penjelasan)}</p>
+            ${saranPendapat ? `<ul class="daftar" style="margin-top:10px">${saranPendapat}</ul>` : ''}
+            <p class="kecil teks-redup" style="margin-top:10px">Dijawab ${esc(pendapat.sumber || 'AI umum')} dari foto yang sama, bukan dokter hewan. Bila pendapatnya berbeda, utamakan pemeriksaan dokter.</p>
+          </div>
+        ` : ''}
 
         <div class="bagian"><span class="label-kecil">Penanganan medis</span></div>
         <div class="kartu">

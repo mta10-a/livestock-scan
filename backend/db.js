@@ -74,6 +74,7 @@ function tambahKolom(tabel, kolom, definisi) {
 }
 
 tambahKolom('riwayat', 'model', 'TEXT');
+tambahKolom('riwayat', 'pendapat_kedua', 'TEXT');
 tambahKolom('users', 'token_version', 'INTEGER NOT NULL DEFAULT 0');
 tambahKolom('users', 'nama_peternakan', 'TEXT');
 tambahKolom('users', 'alamat', 'TEXT');

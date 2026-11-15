@@ -146,6 +146,9 @@ async function main() {
   cek('RF-14 rekomendasi medis terisi', (r.data.hasil?.rekomendasi?.medis || []).length > 0);
   cek('RF-15 rekomendasi herbal terisi', (r.data.hasil?.rekomendasi?.herbal || []).length > 0);
   cek('RF-16 penurunan kuota 3 -> 2', r.data.sisa_scan === 2, String(r.data.sisa_scan));
+
+  const pendapat = r.data.hasil?.pendapat_kedua;
+  cek('Pendapat kedua: bentuk data dikenali', pendapat === null || (typeof pendapat === 'object' && typeof pendapat.penjelasan === 'string'), JSON.stringify(pendapat).slice(0, 120));
   cek('RF-08 pra-pemrosesan -> ukuran model 224x224', r.data.hasil?.kualitas_foto?.ukuran_model?.[0] === 224, JSON.stringify(r.data.hasil?.kualitas_foto));
   cek('RF-10 kecerahan & kontras dihitung dari foto', typeof r.data.hasil?.kualitas_foto?.kecerahan === 'number' && typeof r.data.hasil?.kualitas_foto?.kontras === 'number');
   cek(

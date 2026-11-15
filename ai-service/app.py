@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import io
 import json
 import os
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -20,6 +23,23 @@ app.config["MAX_CONTENT_LENGTH"] = int(os.environ.get("MAKS_UKURAN_FOTO", 5 * 10
 BASE = Path(__file__).resolve().parent
 MODEL_DIR = BASE / "model"
 BERKAS_EMBEDDER = MODEL_DIR / "efficientnet_lite0.tflite"
+
+BERKAS_KUNCI_GEMINI = BASE / ".gemini-key"
+
+def baca_kunci_gemini() -> str:
+    kunci = (os.environ.get("GEMINI_API_KEY") or "").strip()
+    if kunci:
+        return kunci
+    if BERKAS_KUNCI_GEMINI.exists():
+        try:
+            return BERKAS_KUNCI_GEMINI.read_text(encoding="utf-8").strip()
+        except OSError:
+            return ""
+    return ""
+
+KUNCI_GEMINI = baca_kunci_gemini()
+MODEL_GEMINI = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+BATAS_WAKTU_GEMINI = float(os.environ.get("GEMINI_TIMEOUT", 6))
 
 EKSTENSI_DIIZINKAN = {"jpg", "jpeg", "png"}
 FORMAT_DIIZINKAN = {"JPEG", "PNG", "MPO"}
@@ -201,6 +221,114 @@ def dummy_prediksi(spesies: str, rgb: Image.Image, info: dict):
         confidence = acak(b"|tinggi", 0.74, 0.97)
     return penyakit, confidence, [], "dummy-v1"
 
+def siapkan_gambar_gemini(rgb: Image.Image) -> str:
+
+    kecil = rgb.copy()
+    kecil.thumbnail((768, 768))
+    buf = io.BytesIO()
+    kecil.save(buf, format="JPEG", quality=85)
+    return base64.b64encode(buf.getvalue()).decode("ascii")
+
+def baca_json_gemini(teks: str) -> dict:
+
+    teks = (teks or "").strip()
+    if teks.startswith("```"):
+        teks = teks.strip("`").strip()
+        if teks.lower().startswith("json"):
+            teks = teks[4:]
+    awal, akhir = teks.find("{"), teks.rfind("}")
+    if awal != -1 and akhir > awal:
+        teks = teks[awal : akhir + 1]
+    return json.loads(teks)
+
+def pendapat_gemini(rgb: Image.Image, spesies: str, penyakit: str, confidence: float):
+
+    if not KUNCI_GEMINI:
+        return None
+
+    perintah = (
+        "Anda asisten kesehatan ternak untuk peternak Indonesia. "
+        f"Foto ini adalah seekor {spesies}. Model klasifikasi kami menyebut kemungkinan "
+        f"\"{penyakit}\" dengan keyakinan {round(confidence * 100)}%. "
+        "Perhatikan foto, lalu nilai apakah hasil itu masuk akal. "
+        "Gunakan bahasa Indonesia sederhana. "
+        "Balas HANYA satu objek JSON dengan kunci: "
+        "kesan (teks singkat), sejalan (true atau false), "
+        "keyakinan (rendah, sedang, atau tinggi), "
+        "penjelasan (2 sampai 3 kalimat), saran (paling banyak 3 kalimat singkat)."
+    )
+
+    muatan = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": perintah},
+                    {"inline_data": {"mime_type": "image/jpeg", "data": siapkan_gambar_gemini(rgb)}},
+                ],
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.2,
+            "maxOutputTokens": 512,
+            "responseMimeType": "application/json",
+        },
+    }
+
+    url = (
+        "https://generativelanguage.googleapis.com/v1beta/models/"
+        f"{MODEL_GEMINI}:generateContent?key={KUNCI_GEMINI}"
+    )
+    permintaan = urllib.request.Request(
+        url,
+        data=json.dumps(muatan).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+
+    mulai = time.perf_counter()
+    try:
+        with urllib.request.urlopen(permintaan, timeout=BATAS_WAKTU_GEMINI) as jawab:
+            isi = json.loads(jawab.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        print(f"[ai-service] Gemini menolak permintaan: HTTP {e.code}")
+        return None
+    except Exception as e:
+        print(f"[ai-service] Gemini tidak dapat dihubungi: {type(e).__name__}")
+        return None
+
+    try:
+        bagian = isi["candidates"][0]["content"]["parts"]
+        teks = "".join(p.get("text", "") for p in bagian)
+        data = baca_json_gemini(teks)
+    except Exception:
+        print("[ai-service] jawaban Gemini tidak dapat dibaca")
+        return None
+
+    penjelasan = str(data.get("penjelasan") or "").strip()
+    if not penjelasan:
+        return None
+
+    sejalan = data.get("sejalan")
+    if isinstance(sejalan, str):
+        sejalan = sejalan.strip().lower() in {"true", "ya", "yes", "1"}
+    else:
+        sejalan = bool(sejalan)
+
+    saran = data.get("saran") or []
+    if isinstance(saran, str):
+        saran = [saran]
+
+    return {
+        "sumber": f"gemini ({MODEL_GEMINI})",
+        "kesan": str(data.get("kesan") or "").strip()[:120],
+        "sejalan": sejalan,
+        "keyakinan": str(data.get("keyakinan") or "").strip()[:20],
+        "penjelasan": penjelasan[:600],
+        "saran": [str(s).strip()[:200] for s in saran if str(s).strip()][:3],
+        "durasi_ms": round((time.perf_counter() - mulai) * 1000, 1),
+    }
+
 @app.get("/health")
 def health():
     model_aktif = {
@@ -216,6 +344,8 @@ def health():
         mode="nyata" if MODEL else "dummy",
         embedder=siapkan_embedder_aktif(),
         model=model_aktif,
+        gemini="aktif" if KUNCI_GEMINI else "tidak diset",
+        gemini_model=MODEL_GEMINI if KUNCI_GEMINI else None,
         spesies=list(PENYAKIT_DUMMY.keys()),
     )
 
@@ -276,6 +406,11 @@ def predict():
         confidence *= 0.82
 
     confidence = round(min(max(confidence, 0.05), 0.99), 4)
+
+    pendapat = None
+    if KUNCI_GEMINI and (time.perf_counter() - mulai) < 3.0:
+        pendapat = pendapat_gemini(rgb, spesies, penyakit, confidence)
+
     durasi = round((time.perf_counter() - mulai) * 1000, 1)
 
     return jsonify(
@@ -287,6 +422,7 @@ def predict():
         peringkat=peringkat,
         peringatan=confidence < AMBANG_PERINGATAN,
         model=nama_model,
+        pendapat_kedua=pendapat,
         durasi_ms=durasi,
     )
 
@@ -314,5 +450,9 @@ if __name__ == "__main__":
             print(f"[ai-service]   {sp:8} -> {', '.join(m.kelas)}{tambahan}")
     else:
         print("[ai-service] berkas model belum ada -> mode DUMMY")
+    if KUNCI_GEMINI:
+        print(f"[ai-service] pendapat kedua Gemini aktif ({MODEL_GEMINI})")
+    else:
+        print("[ai-service] pendapat kedua Gemini tidak aktif (kunci belum diset)")
     print(f"[ai-service] berjalan di http://localhost:{port}")
     app.run(host="127.0.0.1", port=port, debug=False)

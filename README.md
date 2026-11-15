@@ -85,6 +85,24 @@ ini diakui apa adanya, bukan angka yang dibuat-buat.
 Kelas yang dikenali: sapi (Sehat, LSD, PMK), kambing (Sehat, Gangguan Kulit),
 ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
 
+### Pendapat kedua dengan Gemini (opsional)
+
+Klasifikasi utama tetap dari model latihan di atas. Gemini Flash dipakai sebagai
+pendapat kedua: menilai apakah foto mendukung hasil model, lalu menjelaskannya
+dengan bahasa sehari-hari. Kuotanya gratis dari Google AI Studio.
+
+Cara mengaktifkan:
+
+1. Buka `https://aistudio.google.com/apikey`, masuk dengan akun Google, lalu
+   klik **Create API key** (tidak perlu kartu kredit).
+2. Simpan kuncinya di `ai-service/.gemini-key` — satu baris berisi kunci saja.
+   Berkas ini tidak ikut di-commit.
+3. Jalankan ulang aplikasi. Statusnya bisa dilihat di `/health` (Flask).
+
+Kalau kunci belum diisi, kuota Gemini habis, atau internet mati, aplikasi tetap
+berjalan normal dengan model latihan saja tanpa pesan error. Hasil Gemini ikut
+disimpan di riwayat supaya masih terlihat saat membuka hasil lama.
+
 ## Endpoint
 
 | Endpoint | Fungsi |
@@ -104,7 +122,7 @@ ayam (Sehat, Coccidiosis, Tetelo, Salmonellosis).
 | GET /api/token/paket | Daftar paket token |
 | POST /api/token/tukar | Tukar kode token menjadi kuota |
 | GET /api/token/transaksi | Riwayat penukaran token |
-| GET /health (Flask) | Status layanan AI dan model yang aktif |
+| GET /health (Flask) | Status layanan AI, model aktif, dan status Gemini |
 | POST /predict (Flask) | Analisis foto: penyakit dan tingkat keyakinan |
 
 ## Catatan

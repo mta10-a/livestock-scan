@@ -25,3 +25,7 @@ desktop.ini
 # Berkas pendukung lokal (tidak diikutkan ke repositori)
 docs/
 presentasi/
+
+# Kunci API (jangan pernah di-commit)
+ai-service/.gemini-key
+.env

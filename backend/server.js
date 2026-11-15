@@ -230,6 +230,8 @@ function dataPengguna(id) {
 function barisKeHasil(baris) {
   let fitur = [];
   try { fitur = JSON.parse(baris.fitur_visual || '[]'); } catch { fitur = []; }
+  let pendapat = null;
+  try { pendapat = baris.pendapat_kedua ? JSON.parse(baris.pendapat_kedua) : null; } catch { pendapat = null; }
   return {
     id: Number(baris.id),
     spesies: baris.spesies,
@@ -239,6 +241,7 @@ function barisKeHasil(baris) {
     gejala: baris.gejala || '',
     fitur_visual: fitur,
     rekomendasi: rekomendasiUntuk(baris.penyakit),
+    pendapat_kedua: pendapat,
     model: baris.model || '',
     created_at: baris.created_at,
   };
@@ -548,8 +551,8 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
 
     const info = db
       .prepare(
-        `INSERT INTO riwayat (user_id, spesies, penyakit, confidence, peringatan, gejala, fitur_visual, model)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO riwayat (user_id, spesies, penyakit, confidence, peringatan, gejala, fitur_visual, model, pendapat_kedua)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         req.userId,
@@ -559,7 +562,8 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
         peringatan,
         gejala || null,
         JSON.stringify(prediksi.fitur_visual || []),
-        prediksi.model || null
+        prediksi.model || null,
+        prediksi.pendapat_kedua ? JSON.stringify(prediksi.pendapat_kedua) : null
       );
 
     db.exec('COMMIT');
