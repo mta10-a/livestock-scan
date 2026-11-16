@@ -38,7 +38,7 @@ def baca_kunci_gemini() -> str:
     return ""
 
 KUNCI_GEMINI = baca_kunci_gemini()
-MODEL_GEMINI = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL_GEMINI = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 BATAS_WAKTU_GEMINI = float(os.environ.get("GEMINI_TIMEOUT", 6))
 
 EKSTENSI_DIIZINKAN = {"jpg", "jpeg", "png"}
