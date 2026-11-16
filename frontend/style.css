@@ -679,13 +679,14 @@ svg { display: block; }
   .nav-bawah a svg { width: 18px; height: 18px; }
 
   .konten > * { max-width: 1200px; margin-left: auto; margin-right: auto; }
+  .konten > .tombol { display: flex; }
   .konten.center > * { max-width: 460px; }
 
   .judul { font-size: 24px; }
   .subjudul { font-size: 13.5px; }
   .label-kecil { font-size: 10.5px; }
 
-  .bagian { margin: 28px 2px 12px; }
+  .bagian { margin-block: 28px 12px; }
 
   .kartu { padding: 22px; }
   .baris { padding: 16px 20px; }
