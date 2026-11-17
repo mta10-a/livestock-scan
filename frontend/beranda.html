@@ -73,12 +73,18 @@
     el('tombol-keluar').addEventListener('click', keluar);
 
     function aksesUntuk(me) {
+      const profil = me.peran === 'dokter'
+        ? { label: 'Profil Dokter', sub: 'Data akun dan nomor STR' }
+        : me.peran === 'admin'
+          ? { label: 'Profil Akun', sub: 'Data akun admin' }
+          : { label: 'Profil Peternakan', sub: 'Data ternak, wilayah, akun dokter' };
+
       const dasar = [
         { label: 'Konsultasi Dokter', sub: me.peran === 'dokter' ? 'Permintaan dari peternak' : 'Tanya dokter hewan', ikon: 'dokter', href: 'konsultasi.html' },
         { label: 'Riwayat Medis', sub: 'Semua hasil scan tersimpan', ikon: 'riwayat', href: 'riwayat.html' },
         { label: 'Peta Wabah', sub: 'Sebaran laporan peternak', ikon: 'peta', href: 'peta.html' },
         { label: 'E-Sertifikat', sub: 'Cetak dan verifikasi hasil', ikon: 'dokumen', href: 'sertifikat.html' },
-        { label: 'Profil Peternakan', sub: 'Data ternak, wilayah, akun dokter', ikon: 'dokumen', href: 'profil.html' },
+        { ...profil, ikon: 'dokumen', href: 'profil.html' },
         { label: 'Lapor Wabah', sub: 'Laporkan ternak sakit di sekitar', ikon: 'lapor', href: 'lapor.html' },
         { label: 'Beli Token', sub: 'Tambah kuota scan', ikon: 'token', href: 'token.html' },
       ];
