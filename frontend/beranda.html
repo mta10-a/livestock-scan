@@ -149,12 +149,13 @@
     }
 
     function kartuAntre(k) {
+      const warna = k.status === 'menunggu' ? 'kuning' : 'hijau';
       return `<a class="baris" href="konsultasi.html?id=${Number(k.id)}">
         <span class="baris-utama">
           <span class="baris-judul">${esc(k.topik)}</span>
           <span class="baris-meta">${esc(k.nama_peternak)} · ${esc(formatTanggal(k.diperbarui))}</span>
         </span>
-        <span class="pil kuning">menunggu</span>
+        <span class="pil ${warna}">${esc(k.status)}</span>
         <span class="chevron" data-ikon="chevron"></span>
       </a>`;
     }
@@ -221,11 +222,11 @@
       await muatWabahTerbaru();
     }
 
-    async function tampilkanDokter() {
+    async function tampilkanDokter(me) {
       el('ajak').textContent = 'Jawab permintaan konsultasi dari peternak.';
       el('tombol-scan').remove();
       el('bagian-wabah').remove();
-      el('judul-pemeriksaan').textContent = 'Permintaan konsultasi';
+      el('judul-pemeriksaan').textContent = 'Konsultasi terbaru';
       el('tautan-pemeriksaan').href = 'konsultasi.html';
 
       const wadah = el('pemeriksaan-terbaru');
@@ -236,12 +237,14 @@
         el('stat-dua').textContent = k.konsultasi.length;
         el('stat-dua-ket').textContent = 'Percakapan';
 
-        const antre = k.konsultasi.filter((x) => x.status === 'menunggu' && !x.nama_dokter);
+        const antre = k.konsultasi.filter(
+          (x) => (x.status === 'menunggu' && !x.nama_dokter) || (x.status === 'aktif' && x.dokter_id === me.id)
+        );
         wadah.innerHTML = antre.length
           ? `<div class="grup">${antre.slice(0, 3).map(kartuAntre).join('')}</div>`
           : `<div class="kosong">
                <span class="lingkaran" data-ikon="dokter"></span>
-               <p>Belum ada permintaan konsultasi baru.</p>
+               <p>Belum ada konsultasi masuk.</p>
                <a class="tombol mini" href="konsultasi.html">Buka konsultasi</a>
              </div>`;
       } catch (err) {
@@ -286,7 +289,7 @@
       el('sapaan').textContent = `Halo, ${panggilan}`;
       renderAkses(me);
 
-      if (me.peran === 'dokter') await tampilkanDokter();
+      if (me.peran === 'dokter') await tampilkanDokter(me);
       else if (me.peran === 'admin') await tampilkanAdmin();
       else await tampilkanPeternak(me);
 
