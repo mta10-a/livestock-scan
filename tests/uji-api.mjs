@@ -162,6 +162,8 @@ async function main() {
     String(r.data.hasil?.penyakit)
   );
   const idHasil = r.data.hasil?.id;
+  const kodeSertifikat = r.data.hasil?.kode_sertifikat;
+  const penyakitHasil = r.data.hasil?.penyakit;
 
   r = await kirim(B1, '/api/riwayat', { token: tokenA });
   cek('RF-18 riwayat berisi 1 data', r.status === 200 && r.data.riwayat?.length === 1, JSON.stringify(r.data).slice(0, 120));
@@ -278,8 +280,152 @@ async function main() {
 
   const emailB = emailUnik();
   const rb = await kirim(B1, '/api/register', { method: 'POST', body: { nama: 'Siti Ternak', email: emailB, password: 'rahasia123' } });
-  r = await kirim(B1, '/api/riwayat', { token: rb.data.token });
+  const tokenB = rb.data.token;
+  r = await kirim(B1, '/api/riwayat', { token: tokenB });
   cek('RF-18 pengguna lain tidak melihat riwayat orang lain', r.data.riwayat?.length === 0, String(r.data.riwayat?.length));
+
+  cek('RF-21 hasil scan punya kode sertifikat', typeof kodeSertifikat === 'string' && /^LHS-[A-Z0-9]+$/.test(kodeSertifikat), String(kodeSertifikat));
+
+  r = await kirim(B1, `/api/sertifikat/${kodeSertifikat}`, {});
+  cek(
+    'RF-21 sertifikat bisa dibuka publik -> 200',
+    r.status === 200 && r.data.sertifikat?.kode === kodeSertifikat && r.data.sertifikat?.penyakit === penyakitHasil,
+    JSON.stringify(r.data).slice(0, 160)
+  );
+  cek('RF-23 sertifikat memuat catatan indikasi awal', typeof r.data.sertifikat?.catatan === 'string' && r.data.sertifikat.catatan.length > 10);
+
+  r = await kirim(B1, '/api/sertifikat/LHS-PALSU123', {});
+  cek('RF-23 kode sertifikat palsu -> 404', r.status === 404, String(r.status));
+
+  r = await kirim(B1, '/api/sertifikat/LHS-XX', {});
+  cek('RF-23 format kode tidak valid -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/sertifikat/saya', { token: tokenA });
+  cek(
+    'RF-21 daftar sertifikat saya berisi hasil scan',
+    r.status === 200 && r.data.sertifikat?.some((s) => s.kode === kodeSertifikat),
+    JSON.stringify(r.data).slice(0, 120)
+  );
+
+  r = await kirim(B1, '/api/laporan', {
+    method: 'POST',
+    token: tokenA,
+    body: {
+      spesies: 'sapi',
+      penyakit: 'Penyakit Mulut dan Kuku (PMK)',
+      jumlah_sakit: 2,
+      kecamatan: 'Kec. Cibiru',
+      lat: -6.9251,
+      lng: 107.7188,
+    },
+  });
+  cek('RF-19 laporan dengan titik lokasi -> 201', r.status === 201 && r.data.laporan?.lat === -6.9251, JSON.stringify(r.data).slice(0, 160));
+
+  r = await kirim(B1, '/api/peta/sebaran', { token: tokenA });
+  cek('RF-19 peta memuat titik lokasi', r.status === 200 && r.data.titik?.some((t) => Math.abs(t.lat + 6.9251) < 0.001), JSON.stringify(r.data.titik || []).slice(0, 160));
+  cek('RF-19 wilayah teragregasi per kecamatan', r.data.wilayah?.some((w) => w.kecamatan === 'Kec. Cibiru'), JSON.stringify(r.data.wilayah || []).slice(0, 160));
+
+  r = await kirim(B1, '/api/peta/sebaran', {});
+  cek('RF-19 peta tanpa login -> 401', r.status === 401, String(r.status));
+
+  r = await kirim(B1, '/api/laporan', {
+    method: 'POST',
+    token: tokenA,
+    body: { spesies: 'sapi', penyakit: 'PMK', jumlah_sakit: 1, kecamatan: 'Kec. Cibiru', lat: 200, lng: 107 },
+  });
+  cek('RF-19 lintang tidak valid -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/wabah/sekitar', { token: tokenA });
+  cek(
+    'RF-25 peringatan wabah di sekitar alamat',
+    r.status === 200 && r.data.dasar === 'alamat' && r.data.jumlah >= 1,
+    JSON.stringify(r.data).slice(0, 160)
+  );
+  cek('RF-25 wilayah peringatan terbaca dari profil', /cibiru/i.test(r.data.kata_kunci || ''), String(r.data.kata_kunci));
+
+  let fdDokter = new FormData();
+  fdDokter.append('nomor_str', 'STR-UJI-2026');
+  fdDokter.append('wilayah', 'Kota Bandung');
+  fdDokter.append('berkas', fotoJpeg('str.jpg'));
+  r = await kirim(B1, '/api/dokter/daftar', { method: 'POST', token: tokenB, form: fdDokter });
+  cek('RF-04 pengajuan dokter -> 201 menunggu', r.status === 201 && r.data.dokter?.status === 'menunggu', JSON.stringify(r.data).slice(0, 160));
+
+  fdDokter = new FormData();
+  fdDokter.append('nomor_str', 'STR-UJI-2026');
+  fdDokter.append('wilayah', 'Kota Bandung');
+  fdDokter.append('berkas', fotoJpeg('str.jpg'));
+  r = await kirim(B1, '/api/dokter/daftar', { method: 'POST', token: tokenB, form: fdDokter });
+  cek('RF-04 pengajuan ganda ditolak -> 409', r.status === 409, String(r.status));
+
+  fdDokter = new FormData();
+  fdDokter.append('nomor_str', 'STR-UJI-2026');
+  fdDokter.append('wilayah', 'Kota Bandung');
+  fdDokter.append('berkas', fotoTxt());
+  r = await kirim(B1, '/api/dokter/daftar', { method: 'POST', token: tokenA, form: fdDokter });
+  cek('RF-04 berkas STR bukan gambar/PDF -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/login', { method: 'POST', body: { email: 'admin@livestockhealth.id', password: 'admin123' } });
+  cek('RF-38 login akun admin demo -> 200', r.status === 200 && !!r.data.token, String(r.status));
+  const tokenAdmin = r.data.token;
+
+  r = await kirim(B1, '/api/admin/ringkasan', { token: tokenAdmin });
+  cek('RF-38 ringkasan admin berisi data nyata', r.status === 200 && r.data.pengguna?.total >= 3 && r.data.scan?.total >= 3, JSON.stringify(r.data).slice(0, 160));
+
+  r = await kirim(B1, '/api/admin/ringkasan', { token: tokenA });
+  cek('RF-38 ringkasan bukan untuk peternak -> 403', r.status === 403, String(r.status));
+
+  r = await kirim(B1, '/api/admin/dokter?status=menunggu', { token: tokenAdmin });
+  const calonDokter = (r.data.dokter || []).find((d) => d.email === emailB);
+  cek('RF-39 admin melihat pengajuan dokter', Boolean(calonDokter) && calonDokter.ada_berkas === true, JSON.stringify(r.data).slice(0, 160));
+
+  r = await kirim(B1, `/api/admin/dokter/${calonDokter?.user_id}/berkas`, { token: tokenAdmin });
+  cek('RF-39 admin bisa membuka berkas STR', r.status === 200, String(r.status));
+
+  r = await kirim(B1, `/api/admin/dokter/${calonDokter?.user_id}/verifikasi`, {
+    method: 'POST',
+    token: tokenAdmin,
+    body: { keputusan: 'terima', catatan: 'Berkas lengkap' },
+  });
+  cek('RF-39 verifikasi dokter -> terverifikasi', r.status === 200 && r.data.dokter?.status === 'terverifikasi', JSON.stringify(r.data).slice(0, 160));
+
+  r = await kirim(B1, '/api/me', { token: tokenB });
+  cek('RF-04 peran berubah menjadi dokter setelah verifikasi', r.data.peran === 'dokter', String(r.data.peran));
+
+  r = await kirim(B1, '/api/admin/pengguna?q=Siti', { token: tokenAdmin });
+  cek('RF-39 pencarian pengguna di admin', r.status === 200 && r.data.pengguna?.some((u) => u.email === emailB), JSON.stringify(r.data).slice(0, 160));
+
+  r = await kirim(B1, '/api/konsultasi', { method: 'POST', token: tokenA, body: { topik: 'Sapi demam sejak dua hari' } });
+  cek('RF-31 ajukan konsultasi -> 201 menunggu', r.status === 201 && r.data.konsultasi?.status === 'menunggu', JSON.stringify(r.data).slice(0, 160));
+  const idKonsul = r.data.konsultasi?.id;
+
+  r = await kirim(B1, '/api/konsultasi', { token: tokenB });
+  cek('RF-32 dokter melihat antrean konsultasi', r.status === 200 && r.data.konsultasi?.some((k) => k.id === idKonsul), JSON.stringify(r.data).slice(0, 160));
+
+  r = await kirim(B1, `/api/konsultasi/${idKonsul}/ambil`, { method: 'POST', token: tokenB });
+  cek('RF-32 dokter mengambil konsultasi -> aktif', r.status === 200 && r.data.konsultasi?.status === 'aktif', JSON.stringify(r.data).slice(0, 160));
+
+  r = await kirim(B1, `/api/konsultasi/${idKonsul}/pesan`, { method: 'POST', token: tokenB, body: { isi: 'Pisahkan sapi dari kandang lain.' } });
+  cek('RF-33 dokter mengirim balasan -> 201', r.status === 201, String(r.status));
+
+  r = await kirim(B1, `/api/konsultasi/${idKonsul}`, { token: tokenA });
+  cek('RF-33 peternak membaca balasan dokter', r.status === 200 && r.data.konsultasi?.pesan?.length === 1, JSON.stringify(r.data).slice(0, 160));
+
+  r = await kirim(B1, `/api/konsultasi/${idKonsul}`, {});
+  cek('RF-33 percakapan tanpa login -> 401', r.status === 401, String(r.status));
+
+  r = await kirim(B1, `/api/konsultasi/${idKonsul}/pesan`, { method: 'POST', token: tokenA, body: { isi: 'Baik, terima kasih dok.' } });
+  cek('RF-33 peternak membalas -> 201', r.status === 201, String(r.status));
+
+  r = await kirim(B1, `/api/konsultasi/${idKonsul}/selesai`, { method: 'POST', token: tokenB });
+  cek('RF-34 dokter menutup konsultasi -> 200', r.status === 200, String(r.status));
+
+  r = await kirim(B1, `/api/konsultasi/${idKonsul}/pesan`, { method: 'POST', token: tokenA, body: { isi: 'Masih mau tanya' } });
+  cek('RF-34 pesan setelah ditutup -> 409', r.status === 409, String(r.status));
+
+  for (const berkas of ['peta.html', 'konsultasi.html', 'sertifikat.html', 'admin.html']) {
+    const h = await fetch(`${B1}/${berkas}`);
+    cek(`Halaman ${berkas} tersaji`, h.status === 200, String(h.status));
+  }
 
   const anakUji = angkatBackendUji();
   try {

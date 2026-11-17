@@ -12,7 +12,7 @@ tingkat keyakinan dan saran penanganan.
 
 | Folder | Isi |
 |---|---|
-| `frontend/` | Halaman HTML/CSS/JS yang dibuka di browser (10 halaman) |
+| `frontend/` | Halaman HTML/CSS/JS yang dibuka di browser (14 halaman) |
 | `backend/` | Server Node.js (Express + SQLite): akun, kuota, riwayat, dan pemanggil layanan AI |
 | `ai-service/` | Layanan Python (Flask) yang menganalisis foto ternak |
 | `tests/` | Skrip uji otomatis API |
@@ -30,15 +30,16 @@ aplikasinya di browser. Nomor port dan batas pemakaian diatur di `config.py`.
 
 ## Progres fitur
 
-Terpakai **22 dari 40** kebutuhan fungsional (55%). Kalau dihitung ketat,
+Terpakai **35 dari 40** kebutuhan fungsional (87,5%). Dengan hitungan ketat,
 RF-27 baru sebatas penukaran kode token (belum ada pembayaran daring), jadi
-hitungan amannya 21 RF (52,5%).
+hitungan amannya 34 RF (**85%**).
 
 | Kode | Fitur |
 |---|---|
 | RF-01 | Registrasi akun |
 | RF-02 | Login |
 | RF-03 | Profil peternakan |
+| RF-04 | Pendaftaran dan verifikasi dokter hewan |
 | RF-05 | Pilih jenis ternak |
 | RF-06 | Ambil/unggah foto |
 | RF-07 | Validasi data dan hak akses scan |
@@ -53,15 +54,27 @@ hitungan amannya 21 RF (52,5%).
 | RF-16 | Penyimpanan hasil diagnosis |
 | RF-17 | Pengiriman hasil ke peternak |
 | RF-18 | Riwayat medis |
+| RF-19 | Peta sebaran wabah |
 | RF-20 | Cetak lembar hasil pemeriksaan |
+| RF-21 | Sertifikat hasil pemeriksaan |
+| RF-22 | Unduh/cetak sertifikat |
+| RF-23 | Kode verifikasi keaslian sertifikat |
 | RF-24 | Laporan wabah |
+| RF-25 | Peringatan wabah di sekitar |
 | RF-26 | Kuota gratis 3x scan |
 | RF-27 | Pembelian/penukaran token |
 | RF-29 | Riwayat transaksi token |
+| RF-31 | Pengajuan konsultasi dokter |
+| RF-32 | Daftar dan pengambilan konsultasi |
+| RF-33 | Percakapan konsultasi |
+| RF-34 | Penutupan konsultasi |
+| RF-38 | Dashboard ringkasan admin |
+| RF-39 | Verifikasi dokter dan kelola pengguna |
+| RF-40 | Monitoring laporan wabah di admin |
 
-Sisanya masih ditunda: konsultasi dokter hewan, verifikasi e-sertifikat dan
-tanda tangan dokter, peta wabah, verifikasi laporan, verifikasi dokter,
-payment gateway, dan dashboard admin.
+Sisanya belum dikerjakan: payment gateway dan otomatisasi pembelian token
+(RF-28, RF-30), serta pendataan dokter lanjutan seperti jadwal praktik dan
+riwayat jawaban (RF-35 s.d. RF-37).
 
 ## Model AI
 
@@ -118,12 +131,40 @@ disimpan di riwayat supaya masih terlihat saat membuka hasil lama.
 | PUT /api/profil | Simpan profil peternakan |
 | GET /api/laporan | Laporan wabah milik pengguna |
 | GET /api/laporan/terbaru | Laporan wabah terbaru dari semua pengguna |
-| POST /api/laporan | Kirim laporan wabah |
+| POST /api/laporan | Kirim laporan wabah (boleh menyertakan titik lokasi) |
+| GET /api/peta/sebaran | Titik dan rekap laporan per kecamatan |
+| GET /api/wabah/sekitar | Jumlah laporan 30 hari terakhir di wilayah profil |
+| GET /api/sertifikat/saya | Daftar kode sertifikat milik pengguna |
+| GET /api/sertifikat/:kode | Verifikasi sertifikat (bisa diakses tanpa login) |
+| POST /api/dokter/daftar | Ajukan akun dokter beserta berkas STR |
+| GET /api/dokter/status | Status pengajuan akun dokter |
+| GET /api/konsultasi | Daftar konsultasi sesuai peran |
+| POST /api/konsultasi | Ajukan konsultasi baru |
+| GET /api/konsultasi/:id | Rincian percakapan konsultasi |
+| POST /api/konsultasi/:id/ambil | Dokter mengambil konsultasi dari antrean |
+| POST /api/konsultasi/:id/pesan | Kirim pesan dalam percakapan |
+| POST /api/konsultasi/:id/selesai | Tutup konsultasi |
+| GET /api/admin/ringkasan | Statistik aplikasi untuk admin |
+| GET /api/admin/pengguna | Daftar dan pencarian pengguna |
+| GET /api/admin/dokter | Daftar pengajuan dan data dokter |
+| GET /api/admin/dokter/:id/berkas | Buka berkas STR (khusus admin) |
+| POST /api/admin/dokter/:id/verifikasi | Terima atau tolak pengajuan dokter |
+| GET /api/admin/laporan | Laporan wabah terbaru untuk admin |
 | GET /api/token/paket | Daftar paket token |
 | POST /api/token/tukar | Tukar kode token menjadi kuota |
 | GET /api/token/transaksi | Riwayat penukaran token |
 | GET /health (Flask) | Status layanan AI, model aktif, dan status Gemini |
 | POST /predict (Flask) | Analisis foto: penyakit dan tingkat keyakinan |
+
+## Akun demo
+
+| Peran | Email | Kata sandi |
+|---|---|---|
+| Admin | admin@livestockhealth.id | admin123 |
+| Dokter | dokter@livestockhealth.id | dokter123 |
+
+Akun ini dibuat otomatis saat basis data masih kosong dan ditandai sebagai akun
+demo di aplikasi. Ganti kata sandinya sebelum dipakai di luar pengujian lokal.
 
 ## Catatan
 
@@ -133,8 +174,9 @@ disimpan di riwayat supaya masih terlihat saat membuka hasil lama.
   daftar rujukan veteriner (WOAH/FAO/Merck Veterinary Manual).
 - Kata sandi disimpan dalam bentuk hash, bukan teks terbaca.
 - Sesi browser memakai cookie **httpOnly + SameSite=Lax**, bukan localStorage.
-  Logout mencabut token di server, dan halaman beranda/scan/hasil/riwayat
-  diarahkan ke login bila belum punya sesi.
+  Logout mencabut token di server, dan halaman yang butuh sesi (beranda, scan,
+  hasil, riwayat, profil, lapor, token, peta, konsultasi, admin) diarahkan ke
+  login bila belum punya sesi.
 - Rahasia JWT dibuat otomatis di `backend/data/.jwt-secret` (tidak ikut repo).
 - Registrasi dan login dibatasi 10 percobaan per 10 menit per IP.
 - Foto yang diunggah tidak ditulis ke disk, hanya diproses di memori.
@@ -151,7 +193,22 @@ disimpan di riwayat supaya masih terlihat saat membuka hasil lama.
 - "Cetak lembar hasil" memakai gaya `@media print`, jadi hasilnya bisa
   disimpan sebagai PDF atau dicetak untuk dibawa ke dokter hewan.
 - "Wabah di sekitar" di Beranda menampilkan laporan yang benar-benar dikirim
-  pengguna, bukan data contoh. Peta wabah (RF-19) masih ditunda.
+  pengguna, bukan data contoh. Peringatan dihitung dari kecamatan pada profil;
+  bila alamat kosong, yang dipakai laporan nasional.
+- Peta wabah hanya menampilkan laporan yang disertai titik lokasi. Lokasi diambil
+  lewat izin peramban saat melapor dan dibulatkan sekitar 100 meter. Laporan tanpa
+  titik tetap masuk rekap wilayah.
+- Setiap hasil scan mendapat kode sertifikat acak berawalan `LHS-`. Halaman
+  sertifikat bisa dicetak atau disimpan sebagai PDF, dan kodenya bisa dicek siapa
+  saja tanpa login. Sertifikat tetap menyebut bahwa hasilnya indikasi AI, bukan
+  diagnosis resmi.
+- Akun dokter harus mengunggah berkas STR (JPG/PNG/PDF maks. 2 MB). Berkas
+  disimpan di `backend/data/berkas-str/`, tidak disajikan ke publik, dan hanya
+  bisa dibuka admin lewat endpoint khusus.
+- Konsultasi memakai percakapan teks di dalam aplikasi. Akun dokter demo
+  disediakan untuk mencoba alur ini; ini bukan layanan telemedicine sungguhan.
+- Dashboard admin membaca data nyata dari basis data: jumlah pengguna, scan,
+  laporan, konsultasi, token terjual, pengajuan dokter, dan laporan terbaru.
 - Token scan ditukar memakai kode dari agen. Kode demo `LHS-DEMO-3` dan
   `LHS-DEMO-10` dicetak di konsol backend saat pertama kali dijalankan.
   Payment gateway (RF-28) belum dikerjakan, jadi belum ada pembayaran daring.
