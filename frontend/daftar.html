@@ -36,13 +36,10 @@
           <input id="password" type="password" placeholder="Minimal 6 karakter" autocomplete="new-password" required />
         </div>
 
-        <div class="medan">
-          <label>Daftar sebagai</label>
-          <div style="display:flex;align-items:center;gap:8px">
-            <button type="button" class="chip aktif" id="peran-peternak">Peternak</button>
-            <button type="button" class="chip" id="peran-dokter">Dokter Hewan</button>
-          </div>
-        </div>
+        <p class="kecil teks-redup" style="margin-top:4px">
+          Ingin menjawab konsultasi sebagai dokter hewan? Daftar akun dulu, lalu ajukan akun dokter
+          di halaman Profil dengan mengunggah berkas STR.
+        </p>
 
         <p class="pesan" id="pesan" role="alert"></p>
 
@@ -58,10 +55,6 @@
   <script src="app.js"></script>
   <script>
     pasangLogo();
-
-    el('peran-dokter').addEventListener('click', () => {
-      toast('Registrasi Dokter Hewan belum tersedia pada prototype UTS.');
-    });
 
     el('form-daftar').addEventListener('submit', async (e) => {
       e.preventDefault();

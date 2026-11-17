@@ -36,6 +36,18 @@
         <label for="kecamatan">Kecamatan atau wilayah</label>
         <input id="kecamatan" type="text" maxlength="80" placeholder="Contoh: Kec. Cibiru" />
       </div>
+
+      <div class="kartu" style="margin-bottom:14px">
+        <div class="baris-antara">
+          <span class="baris-utama">
+            <span class="sedang tebal">Titik lokasi <span class="teks-redup" style="font-weight:400">(opsional)</span></span>
+            <span class="kecil teks-redup" id="status-lokasi">Belum diambil. Lokasi membantu peta sebaran wabah.</span>
+          </span>
+          <button class="tombol mini garis" type="button" id="ambil-lokasi" style="flex:0 0 auto">Ambil lokasi</button>
+        </div>
+        <p class="kecil teks-redup" style="margin-top:8px">Titik dibulatkan sekitar 100 meter agar kandang tidak tampil persis.</p>
+      </div>
+
       <div class="medan">
         <label for="catatan">Catatan <span class="teks-redup" style="font-weight:400">(opsional)</span></label>
         <textarea id="catatan" maxlength="300" placeholder="Kondisi ternak, sudah divaksin atau belum, dan lain-lain"></textarea>
@@ -60,6 +72,44 @@
     el('nav-bawah').innerHTML = navBawah('lapor');
 
     let spesiesDipilih = 'sapi';
+    let lokasi = null;
+
+    function gambarStatusLokasi() {
+      el('status-lokasi').textContent = lokasi
+        ? `Titik ${lokasi.lat.toFixed(4)}, ${lokasi.lng.toFixed(4)} siap dikirim.`
+        : 'Belum diambil. Lokasi membantu peta sebaran wabah.';
+      el('ambil-lokasi').textContent = lokasi ? 'Hapus titik' : 'Ambil lokasi';
+    }
+
+    el('ambil-lokasi').addEventListener('click', () => {
+      if (lokasi) {
+        lokasi = null;
+        gambarStatusLokasi();
+        return;
+      }
+      if (!navigator.geolocation) {
+        setPesan('pesan', 'Perangkat ini tidak menyediakan layanan lokasi.');
+        return;
+      }
+
+      el('ambil-lokasi').disabled = true;
+      navigator.geolocation.getCurrentPosition(
+        (posisi) => {
+          lokasi = {
+            lat: Number(posisi.coords.latitude.toFixed(5)),
+            lng: Number(posisi.coords.longitude.toFixed(5)),
+          };
+          setPesan('pesan', '');
+          gambarStatusLokasi();
+          el('ambil-lokasi').disabled = false;
+        },
+        () => {
+          setPesan('pesan', 'Lokasi tidak bisa diambil. Izinkan akses lokasi di peramban.');
+          el('ambil-lokasi').disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+      );
+    });
 
     el('pilih-spesies').innerHTML = Object.entries(SPESIES).map(([kode, s]) => `
       <button class="chip ${kode === spesiesDipilih ? 'aktif' : ''}" type="button" data-spesies="${kode}">${s.nama}</button>
@@ -124,6 +174,10 @@
       if (data.penyakit.length < 3) return setPesan('pesan', 'Isi penyakit atau gejala minimal 3 karakter.');
       if (!Number.isInteger(data.jumlah_sakit) || data.jumlah_sakit < 1) return setPesan('pesan', 'Jumlah ternak sakit minimal 1.');
       if (data.kecamatan.length < 3) return setPesan('pesan', 'Isi kecamatan atau wilayah minimal 3 karakter.');
+      if (lokasi) {
+        data.lat = lokasi.lat;
+        data.lng = lokasi.lng;
+      }
 
       el('kirim').disabled = true;
       try {
@@ -132,6 +186,8 @@
         el('penyakit').value = '';
         el('jumlah').value = '';
         el('catatan').value = '';
+        lokasi = null;
+        gambarStatusLokasi();
         toast('Laporan wabah terkirim.');
         await muatLaporan();
       } catch (err) {

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sertifikat Hasil - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Sertifikat</span>
+        <span class="sub" id="badge-kode">Memuat…</span>
+      </span>
+      <span class="spacer"></span>
+      <a class="tombol mini polos" href="beranda.html">Beranda</a>
+    </header>
+
+    <main class="konten" id="konten">
+      <div class="memuat">
+        <div class="spinner"></div>
+        <p class="sedang teks-redup">Memuat sertifikat…</p>
+      </div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('riwayat');
+
+    const kodeDariAlamat = new URLSearchParams(location.search).get('kode');
+
+    function kartuSertifikat(s) {
+      const tingkat = tingkatKeyakinan(s.keyakinan);
+      const sisa = s.alamat ? ` · ${esc(s.alamat)}` : '';
+
+      return `
+        <div class="sertifikat" id="lembar">
+          <div class="sertifikat-kepala">
+            <span class="logo" data-logo></span>
+            <div class="sertifikat-judul-bungkus">
+              <div class="sertifikat-judul">Sertifikat Hasil Pemeriksaan</div>
+              <div class="sertifikat-sub">LivestockHealth Scan · deteksi penyakit luar ternak</div>
+            </div>
+            <span class="spacer"></span>
+            <span class="sertifikat-kode">${esc(s.kode)}</span>
+          </div>
+
+          <div class="sertifikat-nama">${esc(s.nama_pemilik)}</div>
+          <div class="sertifikat-sub">${esc(s.nama_peternakan || 'Peternakan mandiri')}${sisa}</div>
+
+          <table class="sertifikat-tabel">
+            <tr><td>Jenis ternak</td><td>${esc(spesiesInfo(s.spesies).nama)}</td></tr>
+            <tr><td>Indikasi penyakit</td><td class="tebal">${esc(s.penyakit)}</td></tr>
+            <tr><td>Keyakinan model</td><td>${persen(s.keyakinan)} (${tingkat})</td></tr>
+            <tr><td>Tanggal pemeriksaan</td><td>${esc(formatTanggal(s.tanggal))}</td></tr>
+            <tr><td>Model</td><td>${esc(s.model || 'tidak tercatat')}</td></tr>
+          </table>
+
+          <p class="sertifikat-catatan">${esc(s.catatan)}</p>
+
+          <div class="sertifikat-kaki">
+            <div>
+              <div class="kecil teks-redup">Diterbitkan oleh</div>
+              <div class="tebal sedang">LivestockHealth Scan</div>
+            </div>
+            <div class="sertifikat-verifikasi">
+              <div class="kecil teks-redup">Cek keaslian di</div>
+              <div class="kecil">sertifikat.html?kode=${esc(s.kode)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grup" style="margin-top:14px">
+          <button class="baris" type="button" id="tombol-cetak">
+            ${IKON.cetak}
+            <span class="baris-utama">
+              <span class="baris-judul">Cetak atau simpan PDF</span>
+              <span class="baris-meta">Gunakan dialog cetak peramban</span>
+            </span>
+            <span class="chevron" data-ikon="chevron"></span>
+          </button>
+          <button class="baris" type="button" id="tombol-salin">
+            ${IKON.salin}
+            <span class="baris-utama">
+              <span class="baris-judul">Salin kode sertifikat</span>
+              <span class="baris-meta">${esc(s.kode)}</span>
+            </span>
+          </button>
+          <a class="baris" href="sertifikat.html">
+            ${IKON.cek}
+            <span class="baris-utama">
+              <span class="baris-judul">Verifikasi sertifikat lain</span>
+              <span class="baris-meta">Masukkan kode dari lembar sertifikat</span>
+            </span>
+            <span class="chevron" data-ikon="chevron"></span>
+          </a>
+        </div>
+
+        <p class="kecil teks-redup" style="margin-top:12px">
+          Sertifikat ini diterbitkan dari hasil model AI dan bukan diagnosis resmi dokter hewan.
+          Kode hanya dibuat sekali untuk setiap pemeriksaan.
+        </p>
+      `;
+    }
+
+    async function tampilkanSertifikat(kode) {
+      try {
+        const { sertifikat } = await api('/api/sertifikat/' + encodeURIComponent(kode));
+        el('badge-kode').textContent = 'Kode ' + sertifikat.kode;
+        el('konten').innerHTML = kartuSertifikat(sertifikat);
+        pasangLogo();
+        pasangIkon();
+
+        el('tombol-cetak').onclick = () => window.print();
+        el('tombol-salin').onclick = async () => {
+          const berhasil = await salinTeks(sertifikat.kode);
+          toast(berhasil ? 'Kode sertifikat disalin.' : 'Gagal menyalin kode.');
+        };
+      } catch (err) {
+        el('badge-kode').textContent = 'Kode tidak ditemukan';
+        el('konten').innerHTML = `
+          <div class="kosong">
+            <span class="lingkaran" data-ikon="peringatan"></span>
+            <p>${esc(err.message)}</p>
+            <a class="tombol mini" href="sertifikat.html">Coba kode lain</a>
+          </div>`;
+        pasangIkon();
+      }
+    }
+
+    function barisSaya(s) {
+      return `<a class="baris" href="sertifikat.html?kode=${encodeURIComponent(s.kode)}">
+        <span class="baris-utama">
+          <span class="baris-judul">${esc(s.penyakit)}</span>
+          <span class="baris-meta">${esc(spesiesInfo(s.spesies).nama)} · ${esc(formatTanggal(s.created_at))} · ${esc(s.kode)}</span>
+        </span>
+        <span class="pil ${kelasPil(s.keyakinan, s.penyakit)}">${persen(s.keyakinan)}</span>
+        <span class="chevron" data-ikon="chevron"></span>
+      </a>`;
+    }
+
+    async function tampilkanPengecekan() {
+      el('badge-kode').textContent = 'Verifikasi keaslian';
+
+      let masuk = null;
+      try { masuk = await api('/api/me'); } catch {}
+
+      el('konten').innerHTML = `
+        <h2 class="judul">Cek sertifikat</h2>
+        <p class="subjudul">Masukkan kode yang tertulis pada sertifikat untuk memastikan lembar itu benar diterbitkan aplikasi ini.</p>
+
+        <form class="kartu" id="form-cek" style="margin-top:16px">
+          <div class="medan">
+            <label for="kode">Kode sertifikat</label>
+            <input id="kode" type="text" maxlength="20" placeholder="Contoh: LHS-6F2A9C1B04" autocomplete="off" required />
+          </div>
+          <div class="pesan" id="pesan-cek"></div>
+          <button class="tombol" type="submit">Periksa kode</button>
+        </form>
+
+        ${masuk ? `
+          <div class="bagian"><span class="label-kecil">Sertifikat saya</span></div>
+          <div id="daftar-saya">
+            <div class="memuat"><div class="spinner"></div><p class="kecil teks-redup">Memuat…</p></div>
+          </div>` : `
+          <div class="bagian"><span class="label-kecil">Sertifikat saya</span></div>
+          <div class="kosong">
+            <span class="lingkaran" data-ikon="dokumen"></span>
+            <p>Masuk ke akun Anda untuk melihat daftar sertifikat dari hasil pemeriksaan.</p>
+            <a class="tombol mini" href="login.html">Masuk</a>
+          </div>`}
+      `;
+      pasangIkon();
+      pasangLogo();
+
+      el('form-cek').addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        const kode = el('kode').value.trim().toUpperCase();
+        if (!kode) return;
+        location.href = 'sertifikat.html?kode=' + encodeURIComponent(kode);
+      });
+
+      if (masuk) {
+        try {
+          const { sertifikat } = await api('/api/sertifikat/saya');
+          el('daftar-saya').innerHTML = sertifikat.length
+            ? `<div class="grup">${sertifikat.map(barisSaya).join('')}</div>`
+            : `<div class="kosong">
+                 <span class="lingkaran" data-ikon="dokumen"></span>
+                 <p>Belum ada sertifikat. Setiap hasil scan baru otomatis mendapat kode sertifikat.</p>
+                 <a class="tombol mini" href="scan.html">Mulai scan</a>
+               </div>`;
+        } catch (err) {
+          el('daftar-saya').innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
+        }
+        pasangIkon();
+      }
+    }
+
+    if (kodeDariAlamat) tampilkanSertifikat(kodeDariAlamat);
+    else tampilkanPengecekan();
+  </script>
+</body>
+</html>

@@ -56,6 +56,9 @@
         <button class="tombol" id="simpan" type="button">Simpan profil</button>
       </div>
 
+      <div class="bagian"><span class="label-kecil">Akun dokter hewan</span></div>
+      <div id="kartu-dokter"></div>
+
       <div class="bagian"><span class="label-kecil">Ringkasan</span></div>
       <div class="grup">
         <div class="baris">
@@ -100,6 +103,107 @@
       el('total').textContent = me.total_scan ?? 0;
       el('kuota').textContent = me.sisa_scan ?? 0;
       el('badge-akun').textContent = me.profil?.nama_peternakan || 'Belum diisi';
+      renderDokter(me);
+    }
+
+    function formPengajuan(me) {
+      return `<form class="kartu" id="form-dokter">
+        <p class="kecil teks-redup" style="margin-bottom:12px">
+          Akun dokter dipakai untuk menjawab konsultasi peternak. Pengajuan diperiksa admin.
+        </p>
+        <div class="medan">
+          <label for="nomor-str">Nomor STR</label>
+          <input id="nomor-str" type="text" maxlength="40" placeholder="Contoh: 1234/STR/2024" value="${esc(me.dokter?.nomor_str || '')}" />
+        </div>
+        <div class="medan">
+          <label for="wilayah">Wilayah praktik</label>
+          <input id="wilayah" type="text" maxlength="80" placeholder="Contoh: Kota Bandung" value="${esc(me.dokter?.wilayah || '')}" />
+        </div>
+        <div class="medan">
+          <label for="berkas">Berkas STR (JPG, PNG, atau PDF, maks. 2 MB)</label>
+          <input id="berkas" type="file" accept="image/jpeg,image/png,application/pdf" />
+        </div>
+        <p class="pesan" id="pesan-dokter" role="alert"></p>
+        <button class="tombol" type="submit">Kirim pengajuan</button>
+      </form>`;
+    }
+
+    function renderDokter(me) {
+      const wadah = el('kartu-dokter');
+      if (!wadah) return;
+
+      if (me.peran === 'admin') {
+        wadah.innerHTML = `<div class="kartu"><p class="sedang">Akun admin tidak memerlukan pendaftaran dokter. Verifikasi pengajuan dokter dilakukan di <a class="tautan-kecil" href="admin.html">dashboard admin</a>.</p></div>`;
+        return;
+      }
+
+      if (me.peran === 'dokter') {
+        wadah.innerHTML = `<div class="grup">
+          <div class="baris">
+            <span class="baris-utama">
+              <span class="baris-judul">Terverifikasi sebagai dokter</span>
+              <span class="baris-meta">STR ${esc(me.dokter?.nomor_str || '-')} · ${esc(me.dokter?.wilayah || 'wilayah belum diisi')}</span>
+            </span>
+            <span class="pil hijau">dokter</span>
+          </div>
+          <a class="baris" href="konsultasi.html">
+            <span class="baris-utama">
+              <span class="baris-judul">Buka konsultasi masuk</span>
+              <span class="baris-meta">Ambil permintaan dan balas peternak</span>
+            </span>
+            <span class="chevron" data-ikon="chevron"></span>
+          </a>
+        </div>`;
+        pasangIkon();
+        return;
+      }
+
+      if (me.dokter && me.dokter.status === 'menunggu') {
+        wadah.innerHTML = `<div class="grup">
+          <div class="baris">
+            <span class="baris-utama">
+              <span class="baris-judul">Pengajuan sedang diperiksa</span>
+              <span class="baris-meta">STR ${esc(me.dokter.nomor_str)} · ${esc(me.dokter.wilayah || '-')}</span>
+            </span>
+            <span class="pil kuning">menunggu</span>
+          </div>
+        </div>`;
+        return;
+      }
+
+      const ditolak = me.dokter && me.dokter.status === 'ditolak'
+        ? `<div class="catatan bahaya" style="margin-bottom:12px">
+             <span>Pengajuan sebelumnya ditolak. ${esc(me.dokter.catatan || 'Periksa kembali berkas STR Anda.')}</span>
+           </div>`
+        : '';
+
+      wadah.innerHTML = ditolak + formPengajuan(me);
+
+      el('form-dokter').addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const berkas = el('berkas').files[0];
+        if (!berkas) {
+          setPesan('pesan-dokter', 'Pilih berkas STR terlebih dahulu.');
+          return;
+        }
+
+        const data = new FormData();
+        data.append('nomor_str', el('nomor-str').value.trim());
+        data.append('wilayah', el('wilayah').value.trim());
+        data.append('berkas', berkas);
+
+        const tombol = ev.target.querySelector('button[type="submit"]');
+        tombol.disabled = true;
+        try {
+          await api('/api/dokter/daftar', { method: 'POST', formData: data });
+          const terbaru = await api('/api/me');
+          isi(terbaru);
+          toast('Pengajuan dokter terkirim. Menunggu verifikasi admin.');
+        } catch (err) {
+          setPesan('pesan-dokter', err.message);
+          tombol.disabled = false;
+        }
+      });
     }
 
     el('simpan').addEventListener('click', async () => {

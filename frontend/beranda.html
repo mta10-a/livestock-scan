@@ -38,6 +38,8 @@
         <span data-ikon="kamera"></span> Mulai Scan
       </a>
 
+      <div id="peringatan-wabah"></div>
+
       <div class="bagian">
         <span class="label-kecil">Pemeriksaan terbaru</span>
         <a class="tautan-kecil" href="riwayat.html">Lihat semua</a>
@@ -46,7 +48,7 @@
 
       <div class="bagian" id="wabah">
         <span class="label-kecil">Wabah di sekitar</span>
-        <a class="tautan-kecil" href="lapor.html">Lapor wabah</a>
+        <a class="tautan-kecil" href="peta.html">Lihat peta</a>
       </div>
       <div id="daftar-wabah">
         <div class="kosong">
@@ -70,34 +72,35 @@
     el('nav-bawah').innerHTML = navBawah('beranda');
     el('tombol-keluar').addEventListener('click', keluar);
 
-    const AKSES = [
-      { label: 'Riwayat Medis', sub: 'Semua hasil scan tersimpan', ikon: 'riwayat', href: 'riwayat.html' },
-      { label: 'Profil Peternakan', sub: 'Data ternak dan wilayah', ikon: 'dokumen', href: 'profil.html' },
-      { label: 'Lapor Wabah', sub: 'Laporkan ternak sakit di sekitar', ikon: 'lapor', href: 'lapor.html' },
-      { label: 'Beli Token', sub: 'Tambah kuota scan', ikon: 'token', href: 'token.html' },
-      { label: 'Konsultasi Dokter', ikon: 'dokumen' },
-      { label: 'Peta Wabah', ikon: 'peta' },
-      { label: 'E-Sertifikat', ikon: 'dokumen' },
-    ];
+    function aksesUntuk(me) {
+      const dasar = [
+        { label: 'Konsultasi Dokter', sub: me.peran === 'dokter' ? 'Permintaan dari peternak' : 'Tanya dokter hewan', ikon: 'dokter', href: 'konsultasi.html' },
+        { label: 'Riwayat Medis', sub: 'Semua hasil scan tersimpan', ikon: 'riwayat', href: 'riwayat.html' },
+        { label: 'Peta Wabah', sub: 'Sebaran laporan peternak', ikon: 'peta', href: 'peta.html' },
+        { label: 'E-Sertifikat', sub: 'Cetak dan verifikasi hasil', ikon: 'dokumen', href: 'sertifikat.html' },
+        { label: 'Profil Peternakan', sub: 'Data ternak, wilayah, akun dokter', ikon: 'dokumen', href: 'profil.html' },
+        { label: 'Lapor Wabah', sub: 'Laporkan ternak sakit di sekitar', ikon: 'lapor', href: 'lapor.html' },
+        { label: 'Beli Token', sub: 'Tambah kuota scan', ikon: 'token', href: 'token.html' },
+      ];
 
-    el('akses-cepat').innerHTML = AKSES.map((a) => a.href
-      ? `<a class="baris" href="${a.href}">
-           ${IKON[a.ikon]}
-           <span class="baris-utama">
-             <span class="baris-judul">${a.label}</span>
-             ${a.sub ? `<span class="baris-meta">${a.sub}</span>` : ''}
-           </span>
-           <span class="chevron" data-ikon="chevron"></span>
-         </a>`
-      : `<button class="baris" type="button" onclick="belumTersedia('${a.label}')">
-           ${IKON[a.ikon]}
-           <span class="baris-utama"><span class="baris-judul">${a.label}</span></span>
-         </button>`
-    ).join('');
-    pasangIkon();
+      if (me.peran === 'admin') {
+        dasar.unshift({ label: 'Dashboard Admin', sub: 'Ringkasan, pengguna, verifikasi dokter', ikon: 'dokumen', href: 'admin.html' });
+      }
 
-    function belumTersedia(nama) {
-      toast(`Fitur "${nama}" belum tersedia pada versi ini.`);
+      return dasar;
+    }
+
+    function renderAkses(me) {
+      el('akses-cepat').innerHTML = aksesUntuk(me).map((a) => `
+        <a class="baris" href="${a.href}">
+          ${IKON[a.ikon]}
+          <span class="baris-utama">
+            <span class="baris-judul">${esc(a.label)}</span>
+            <span class="baris-meta">${esc(a.sub)}</span>
+          </span>
+          <span class="chevron" data-ikon="chevron"></span>
+        </a>`).join('');
+      pasangIkon();
     }
 
     function bukaHasil(id) {
@@ -133,6 +136,22 @@
       el('sapaan').textContent = `Halo, ${me.nama.split(' ')[0]}`;
       el('stat-kuota').textContent = me.sisa_scan ?? 0;
       el('stat-scan').textContent = me.total_scan ?? 0;
+      renderAkses(me);
+
+      const wadahPeringatan = el('peringatan-wabah');
+      try {
+        const w = await api('/api/wabah/sekitar');
+        if (w.jumlah > 0) {
+          const contoh = w.laporan[0];
+          const lokasi = w.dasar === 'alamat' ? `di wilayah ${esc(w.kata_kunci)}` : 'di Indonesia';
+          wadahPeringatan.innerHTML = `<div class="catatan hati" style="margin-top:16px">
+            ${IKON.peringatan}
+            <span><b>${Number(w.jumlah)} laporan wabah</b> dalam 30 hari terakhir ${lokasi}.
+            ${contoh ? `Terbaru: ${esc(contoh.penyakit)} di ${esc(contoh.kecamatan)}.` : ''}
+            <a class="tautan-kecil" href="peta.html">Lihat peta</a></span>
+          </div>`;
+        }
+      } catch {}
 
       const wadah = el('pemeriksaan-terbaru');
       try {

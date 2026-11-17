@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Konsultasi - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Konsultasi</span>
+        <span class="sub" id="badge-konsultasi">Memuat…</span>
+      </span>
+      <span class="spacer"></span>
+      <a class="tombol mini polos" href="beranda.html">Beranda</a>
+    </header>
+
+    <main class="konten" id="konten">
+      <div class="memuat">
+        <div class="spinner"></div>
+        <p class="sedang teks-redup">Memuat konsultasi…</p>
+      </div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('beranda');
+
+    const idDariAlamat = new URLSearchParams(location.search).get('id');
+    let peranSaya = 'peternak';
+    let idSaya = 0;
+    let jamSegar = null;
+
+    const labelStatus = {
+      menunggu: '<span class="pil abu">menunggu dokter</span>',
+      aktif: '<span class="pil hijau">berjalan</span>',
+      selesai: '<span class="pil abu">selesai</span>',
+    };
+
+    function kartuKonsultasi(k, bisaAmbil) {
+      return `<div class="baris">
+        <a href="konsultasi.html?id=${Number(k.id)}" style="display:flex;align-items:center;gap:12px;flex:1 1 auto;min-width:0;text-decoration:none;color:inherit">
+          <span class="baris-utama">
+            <span class="baris-judul">${esc(k.topik)}</span>
+            <span class="baris-meta">${esc(k.lawan)} · ${Number(k.jumlah_pesan)} pesan · ${esc(formatTanggal(k.diperbarui))}</span>
+          </span>
+          ${labelStatus[k.status] || ''}
+          <span class="chevron" data-ikon="chevron"></span>
+        </a>
+        ${bisaAmbil ? `<button class="tombol mini" type="button" data-ambil="${Number(k.id)}">Ambil</button>` : ''}
+      </div>`;
+    }
+
+    function pasangTombolAmbil() {
+      document.querySelectorAll('[data-ambil]').forEach((tombol) => {
+        tombol.onclick = async () => {
+          tombol.disabled = true;
+          try {
+            await api('/api/konsultasi/' + tombol.dataset.ambil + '/ambil', { method: 'POST' });
+            location.href = 'konsultasi.html?id=' + tombol.dataset.ambil;
+          } catch (err) {
+            toast(err.message);
+            tombol.disabled = false;
+          }
+        };
+      });
+    }
+
+    async function tampilkanDaftar() {
+      let data;
+      try {
+        data = await api('/api/konsultasi');
+      } catch (err) {
+        el('konten').innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
+        return;
+      }
+
+      peranSaya = data.peran;
+      el('badge-konsultasi').textContent = peranSaya === 'dokter'
+        ? `${data.menunggu} menunggu jawaban`
+        : `${data.konsultasi.length} percakapan`;
+
+      if (peranSaya === 'peternak') {
+        const { riwayat } = await api('/api/riwayat').catch(() => ({ riwayat: [] }));
+        const pilihanRiwayat = riwayat.slice(0, 12).map((r) =>
+          `<option value="${Number(r.id)}">${esc(r.penyakit)} · ${esc(formatTanggal(r.created_at))}</option>`
+        ).join('');
+
+        el('konten').innerHTML = `
+          <h2 class="judul">Tanya dokter hewan</h2>
+          <p class="subjudul">Ceritakan gejala yang terlihat. Dokter akan membalas di menu ini.</p>
+
+          <form class="kartu" id="form-konsultasi" style="margin-top:16px">
+            <div class="medan">
+              <label for="topik">Topik konsultasi</label>
+              <textarea id="topik" maxlength="120" placeholder="Contoh: Sapi demam dan ada benjolan di kulit sejak dua hari" required></textarea>
+            </div>
+            ${pilihanRiwayat ? `
+              <div class="medan">
+                <label for="riwayat">Lampirkan hasil scan (opsional)</label>
+                <select id="riwayat">
+                  <option value="">Tanpa lampiran hasil</option>
+                  ${pilihanRiwayat}
+                </select>
+              </div>` : ''}
+            <div class="pesan" id="pesan-konsultasi"></div>
+            <button class="tombol" type="submit">Kirim ke dokter</button>
+          </form>
+
+          <div class="bagian"><span class="label-kecil">Percakapan saya</span></div>
+          <div id="daftar-konsultasi"></div>
+        `;
+
+        el('form-konsultasi').addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const kotak = el('topik');
+          const topik = kotak.value.trim();
+          if (topik.length < 5) {
+            setPesan('pesan-konsultasi', 'Topik minimal 5 karakter.');
+            return;
+          }
+          const tombol = ev.target.querySelector('button[type="submit"]');
+          tombol.disabled = true;
+          try {
+            const { konsultasi } = await api('/api/konsultasi', {
+              method: 'POST',
+              body: { topik, riwayat_id: el('riwayat') ? el('riwayat').value : '' },
+            });
+            location.href = 'konsultasi.html?id=' + konsultasi.id;
+          } catch (err) {
+            setPesan('pesan-konsultasi', err.message);
+            tombol.disabled = false;
+          }
+        });
+      } else {
+        el('konten').innerHTML = `
+          <h2 class="judul">${peranSaya === 'admin' ? 'Semua konsultasi' : 'Konsultasi masuk'}</h2>
+          <p class="subjudul">${peranSaya === 'admin'
+            ? 'Pantau percakapan antara peternak dan dokter.'
+            : 'Ambil permintaan baru, lalu balas dari halaman percakapan.'}</p>
+          <div class="bagian"><span class="label-kecil">Daftar konsultasi</span></div>
+          <div id="daftar-konsultasi"></div>
+        `;
+      }
+
+      const daftar = el('daftar-konsultasi');
+      const menunggu = data.konsultasi.filter((k) => k.status === 'menunggu' && !k.nama_dokter);
+      const diambil = data.konsultasi.filter((k) => !(k.status === 'menunggu' && !k.nama_dokter));
+
+      if (peranSaya === 'dokter' && menunggu.length) {
+        daftar.innerHTML = `
+          <div class="bagian"><span class="label-kecil">Belum diambil</span></div>
+          <div class="grup">${menunggu.map((k) => kartuKonsultasi(k, true)).join('')}</div>
+          <div class="bagian"><span class="label-kecil">Sedang saya tangani</span></div>
+          <div class="grup">${diambil.length ? diambil.map((k) => kartuKonsultasi(k, false)).join('') : '<div class="baris"><span class="baris-meta">Belum ada.</span></div>'}</div>
+        `;
+      } else {
+        daftar.innerHTML = data.konsultasi.length
+          ? `<div class="grup">${data.konsultasi.map((k) => kartuKonsultasi(k, false)).join('')}</div>`
+          : `<div class="kosong">
+               <span class="lingkaran" data-ikon="dokumen"></span>
+               <p>${peranSaya === 'peternak'
+                 ? 'Belum ada konsultasi. Ajukan pertanyaan lewat formulir di atas.'
+                 : 'Belum ada permintaan konsultasi.'}</p>
+             </div>`;
+      }
+
+      pasangIkon();
+      pasangTombolAmbil();
+    }
+
+    function gelembung(p) {
+      const waktu = formatTanggal(p.created_at);
+      return `<div class="gelembung ${p.milik_saya ? 'saya' : ''}">
+        <div class="gelembung-nama">${esc(p.nama)} · ${esc(p.peran === 'dokter' ? 'dokter' : p.peran === 'admin' ? 'admin' : 'peternak')}</div>
+        <div class="gelembung-isi">${esc(p.isi)}</div>
+        <div class="gelembung-waktu">${esc(waktu)}</div>
+      </div>`;
+    }
+
+    async function muatThread(id, diam = false) {
+      let data;
+      try {
+        data = await api('/api/konsultasi/' + id);
+      } catch (err) {
+        clearInterval(jamSegar);
+        el('konten').innerHTML = `<div class="kosong">
+          <span class="lingkaran" data-ikon="peringatan"></span>
+          <p>${esc(err.message)}</p>
+          <a class="tombol mini" href="konsultasi.html">Kembali</a>
+        </div>`;
+        pasangIkon();
+        return;
+      }
+
+      peranSaya = data.peran;
+      const k = data.konsultasi;
+      el('badge-konsultasi').textContent = k.status === 'selesai' ? 'Percakapan ditutup' : 'Percakapan berjalan';
+
+      const dokterSaya = peranSaya === 'dokter' && k.dokter_id === idSaya;
+      const bisaAmbil = peranSaya === 'dokter' && !k.dokter_id && k.status === 'menunggu';
+      const bisaBalas = k.status !== 'selesai' && peranSaya !== 'admin' && (k.milik_saya || dokterSaya);
+      const bisaTutup = peranSaya !== 'admin' && (k.milik_saya || dokterSaya);
+      const catatanTutup = k.status === 'selesai'
+        ? 'Percakapan ini sudah ditutup. Ajukan konsultasi baru bila masih perlu bantuan.'
+        : bisaAmbil
+          ? 'Ambil konsultasi ini untuk mulai membalas peternak.'
+          : peranSaya === 'admin'
+            ? 'Mode pantau admin: percakapan hanya bisa dibaca.'
+            : 'Anda belum bisa membalas percakapan ini.';
+
+      el('konten').innerHTML = `
+        <a class="tautan-kecil" href="konsultasi.html">Kembali ke daftar</a>
+        <h2 class="judul" style="margin-top:8px">${esc(k.topik)}</h2>
+        <p class="subjudul">${esc(k.nama_dokter || 'Belum diambil dokter')} · ${labelStatus[k.status] || ''}</p>
+
+        <div class="obrolan" id="obrolan">
+          ${k.pesan.length ? k.pesan.map(gelembung).join('') : '<div class="kosong"><span class="lingkaran" data-ikon="chat"></span><p>Belum ada balasan. Tulis pesan pertama Anda.</p></div>'}
+        </div>
+
+        ${bisaAmbil ? `
+          <button class="tombol" type="button" id="tombol-ambil" style="margin-top:14px">Ambil konsultasi ini</button>
+        ` : ''}
+
+        ${bisaBalas ? `
+          <form class="kartu" id="form-balas" style="margin-top:14px">
+            <div class="medan">
+              <label for="pesan">Balasan</label>
+              <textarea id="pesan" maxlength="1000" placeholder="Tulis pesan untuk ${esc(peranSaya === 'dokter' ? 'peternak' : 'dokter')}" required></textarea>
+            </div>
+            <div class="pesan" id="pesan-balas"></div>
+            <div style="display:flex;gap:10px">
+              <button class="tombol" type="submit">Kirim</button>
+              ${bisaTutup ? '<button class="tombol polos" type="button" id="tombol-selesai">Tandai selesai</button>' : ''}
+            </div>
+          </form>
+        ` : `<div class="catatan netral" style="margin-top:14px">
+             <span>${esc(catatanTutup)}</span>
+           </div>`}
+
+        <p class="kecil teks-redup" style="margin-top:12px">Saran dari akun dokter demo pada prototype ini bersifat edukasi, bukan pengganti pemeriksaan langsung.</p>
+      `;
+
+      pasangIkon();
+      const area = el('obrolan');
+      if (!diam) area.scrollTop = area.scrollHeight;
+
+      if (bisaAmbil) {
+        el('tombol-ambil').onclick = async () => {
+          try {
+            await api('/api/konsultasi/' + id + '/ambil', { method: 'POST' });
+            muatThread(id);
+          } catch (err) { toast(err.message); }
+        };
+      }
+
+      if (el('form-balas')) {
+        el('form-balas').addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const isi = el('pesan').value.trim();
+          if (!isi) return;
+          const tombol = ev.target.querySelector('button[type="submit"]');
+          tombol.disabled = true;
+          try {
+            await api('/api/konsultasi/' + id + '/pesan', { method: 'POST', body: { isi } });
+            el('pesan').value = '';
+            await muatThread(id);
+            el('pesan').focus();
+          } catch (err) {
+            setPesan('pesan-balas', err.message);
+          } finally {
+            tombol.disabled = false;
+          }
+        });
+      }
+
+      if (el('tombol-selesai')) {
+        el('tombol-selesai').onclick = async () => {
+          try {
+            await api('/api/konsultasi/' + id + '/selesai', { method: 'POST' });
+            clearInterval(jamSegar);
+            muatThread(id);
+          } catch (err) { toast(err.message); }
+        };
+      }
+    }
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+      idSaya = Number(me.id);
+
+      if (idDariAlamat) {
+        await muatThread(idDariAlamat);
+        jamSegar = setInterval(() => {
+          const kotak = el('pesan');
+          if (kotak && (document.activeElement === kotak || kotak.value.trim())) return;
+          muatThread(idDariAlamat, true);
+        }, 8000);
+      } else {
+        await tampilkanDaftar();
+      }
+    })();
+  </script>
+</body>
+</html>

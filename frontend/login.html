@@ -35,10 +35,9 @@
 
         <button class="tombol mtk" id="tombol-masuk" type="submit">Masuk</button>
 
-        <div class="baris-antara" style="margin-top:15px">
-          <a class="tautan-kecil" href="#" onclick="lupaSandi();return false">Lupa kata sandi</a>
+        <p class="kecil teks-tengah" style="margin-top:15px">
           <a class="tautan-kecil" href="daftar.html">Buat akun baru</a>
-        </div>
+        </p>
 
         <p class="kecil teks-redup teks-tengah" style="margin-top:22px;padding-top:16px;border-top:1px solid var(--garis)">
           Akun baru mendapat <b class="tebal" style="color:var(--hijau)">3x scan gratis</b>.
@@ -50,10 +49,6 @@
   <script src="app.js"></script>
   <script>
     pasangLogo();
-
-    function lupaSandi() {
-      toast('Fitur lupa kata sandi belum tersedia pada prototype UTS.');
-    }
 
     el('form-masuk').addEventListener('submit', async (e) => {
       e.preventDefault();

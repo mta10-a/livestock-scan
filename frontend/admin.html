@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Dashboard Admin</span>
+        <span class="sub" id="badge-admin">Memuat…</span>
+      </span>
+      <span class="spacer"></span>
+      <a class="tombol mini polos" href="beranda.html">Beranda</a>
+    </header>
+
+    <main class="konten" id="konten">
+      <div class="memuat">
+        <div class="spinner"></div>
+        <p class="sedang teks-redup">Memeriksa akses…</p>
+      </div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('beranda');
+
+    const labelPeran = { peternak: 'abu', dokter: 'hijau', admin: 'kuning' };
+
+    function statKotak(angka, ket) {
+      return `<div class="stat-kotak"><div class="stat-angka">${esc(angka)}</div><div class="stat-ket">${esc(ket)}</div></div>`;
+    }
+
+    function kartuDokter(d) {
+      return `<div class="baris" style="flex-wrap:wrap">
+        <span class="baris-utama" style="flex:1 1 200px">
+          <span class="baris-judul">${esc(d.nama)}</span>
+          <span class="baris-meta">${esc(d.email)} · STR ${esc(d.nomor_str)}</span>
+          <span class="baris-meta">${esc(d.wilayah || 'Wilayah belum diisi')} · diajukan ${esc(formatTanggal(d.dibuat))}</span>
+        </span>
+        <span style="display:flex;gap:8px;flex-wrap:wrap">
+          ${d.ada_berkas ? `<a class="tombol mini garis" href="/api/admin/dokter/${Number(d.user_id)}/berkas" target="_blank" rel="noopener">Berkas</a>` : ''}
+          <button class="tombol mini" type="button" data-terima="${Number(d.user_id)}">Terima</button>
+          <button class="tombol mini polos" type="button" data-tolak="${Number(d.user_id)}">Tolak</button>
+        </span>
+      </div>`;
+    }
+
+    function barisPengguna(u) {
+      const peran = u.peran === 'dokter' && u.status_dokter === 'menunggu' ? 'peternak' : u.peran;
+      return `<div class="baris">
+        <span class="baris-utama">
+          <span class="baris-judul">${esc(u.nama)}</span>
+          <span class="baris-meta">${esc(u.email)} · ${Number(u.total_scan)} scan · ${Number(u.sisa_scan)} kuota</span>
+        </span>
+        <span class="pil ${labelPeran[peran] || 'abu'}">${esc(peran)}</span>
+        <span class="kecil teks-redup" style="white-space:nowrap">${esc(formatTanggal(u.created_at))}</span>
+      </div>`;
+    }
+
+    async function verifikasi(userId, keputusan) {
+      try {
+        const hasil = await api('/api/admin/dokter/' + userId + '/verifikasi', {
+          method: 'POST',
+          body: {
+            keputusan,
+            catatan: keputusan === 'tolak' ? 'Ditolak admin, berkas belum sesuai.' : '',
+          },
+        });
+        toast(hasil.pesan);
+        await muatDokter();
+        await muatRingkasan();
+      } catch (err) {
+        toast(err.message);
+      }
+    }
+
+    async function muatDokter() {
+      const wadah = el('daftar-dokter');
+      if (!wadah) return;
+      try {
+        const { dokter } = await api('/api/admin/dokter?status=menunggu');
+        wadah.innerHTML = dokter.length
+          ? `<div class="grup">${dokter.map(kartuDokter).join('')}</div>`
+          : `<div class="kosong">
+               <span class="lingkaran" data-ikon="dokter"></span>
+               <p>Tidak ada pengajuan dokter yang menunggu. Pengajuan baru akan muncul di sini.</p>
+             </div>`;
+        wadah.querySelectorAll('[data-terima]').forEach((b) => {
+          b.onclick = () => verifikasi(b.dataset.terima, 'terima');
+        });
+        wadah.querySelectorAll('[data-tolak]').forEach((b) => {
+          b.onclick = () => verifikasi(b.dataset.tolak, 'tolak');
+        });
+        pasangIkon();
+      } catch (err) {
+        wadah.innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
+      }
+    }
+
+    async function muatPengguna(q = '') {
+      const wadah = el('daftar-pengguna');
+      if (!wadah) return;
+      try {
+        const { pengguna } = await api('/api/admin/pengguna?q=' + encodeURIComponent(q));
+        wadah.innerHTML = pengguna.length
+          ? `<div class="grup">${pengguna.map(barisPengguna).join('')}</div>`
+          : `<p class="pesan">Tidak ada pengguna yang cocok.</p>`;
+      } catch (err) {
+        wadah.innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
+      }
+    }
+
+    async function muatLaporan() {
+      const wadah = el('daftar-laporan');
+      if (!wadah) return;
+      try {
+        const { laporan } = await api('/api/admin/laporan');
+        wadah.innerHTML = laporan.length
+          ? `<div class="grup">${laporan.slice(0, 10).map((l) => `
+              <div class="baris">
+                <span class="baris-utama">
+                  <span class="baris-judul">${esc(l.penyakit)}</span>
+                  <span class="baris-meta">${esc(spesiesInfo(l.spesies).nama)} · ${Number(l.jumlah_sakit)} ekor · ${esc(l.kecamatan)} · ${esc(l.nama)}</span>
+                </span>
+                <span class="kecil teks-redup" style="white-space:nowrap">${esc(formatTanggal(l.created_at))}</span>
+              </div>`).join('')}</div>`
+          : `<p class="pesan">Belum ada laporan wabah.</p>`;
+      } catch (err) {
+        wadah.innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
+      }
+    }
+
+    async function muatRingkasan() {
+      const wadah = el('stat-admin');
+      if (!wadah) return;
+      try {
+        const r = await api('/api/admin/ringkasan');
+        wadah.innerHTML = [
+          statKotak(r.pengguna.total, `Pengguna · ${r.pengguna.dokter} dokter`),
+          statKotak(r.scan.total, `Scan · ${r.scan.tujuh_hari} minggu ini`),
+          statKotak(r.laporan.total, `Laporan wabah · ${r.laporan.tiga_puluh_hari} bulan ini`),
+          statKotak(r.konsultasi.menunggu, 'Konsultasi menunggu'),
+          statKotak(r.dokter_menunggu, 'Dokter belum diverifikasi'),
+          statKotak(r.token_terjual, 'Token scan terjual'),
+        ].join('');
+
+        el('penyakit-teratas').innerHTML = r.penyakit_teratas.length
+          ? r.penyakit_teratas.map((p) => `
+              <div class="baris-antara" style="padding:7px 0">
+                <span class="sedang">${esc(p.penyakit)}</span>
+                <span class="pil abu">${Number(p.jumlah)}</span>
+              </div>`).join('')
+          : '<p class="kecil teks-redup">Belum ada hasil scan.</p>';
+
+        el('badge-admin').textContent = `${r.pengguna.total} pengguna`;
+      } catch (err) {
+        wadah.innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
+      }
+    }
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+
+      if (me.peran !== 'admin') {
+        el('badge-admin').textContent = 'Akses ditolak';
+        el('konten').innerHTML = `<div class="kosong">
+          <span class="lingkaran" data-ikon="peringatan"></span>
+          <p>Halaman ini hanya untuk akun admin. Akun Anda tercatat sebagai ${esc(me.peran)}.</p>
+          <a class="tombol mini" href="beranda.html">Kembali ke beranda</a>
+        </div>`;
+        pasangIkon();
+        return;
+      }
+
+      el('konten').innerHTML = `
+        <h2 class="judul">Ringkasan aplikasi</h2>
+        <p class="subjudul">Data langsung dari basis data prototype, bukan angka contoh.</p>
+
+        <div class="stat-grid" id="stat-admin"></div>
+
+        <div class="bagian"><span class="label-kecil">Pengajuan dokter</span></div>
+        <div id="daftar-dokter"></div>
+
+        <div class="bagian"><span class="label-kecil">Penyakit terbanyak</span></div>
+        <div class="kartu" id="penyakit-teratas"></div>
+
+        <div class="bagian">
+          <span class="label-kecil">Pengguna</span>
+          <a class="tautan-kecil" href="konsultasi.html">Lihat konsultasi</a>
+        </div>
+        <form class="baris-antara" id="form-cari" style="margin-bottom:10px">
+          <input class="cari" id="cari" type="search" placeholder="Cari nama atau email" maxlength="60" />
+          <button class="tombol mini" type="submit" style="flex:0 0 auto">Cari</button>
+        </form>
+        <div id="daftar-pengguna"></div>
+
+        <div class="bagian"><span class="label-kecil">Laporan wabah terbaru</span></div>
+        <div id="daftar-laporan"></div>
+      `;
+      pasangIkon();
+      pasangLogo();
+
+      el('form-cari').addEventListener('submit', (ev) => {
+        ev.preventDefault();
+        muatPengguna(el('cari').value.trim());
+      });
+      el('cari').addEventListener('input', () => {
+        clearTimeout(el('cari')._jeda);
+        el('cari')._jeda = setTimeout(() => muatPengguna(el('cari').value.trim()), 400);
+      });
+
+      await muatRingkasan();
+      await muatDokter();
+      await muatPengguna();
+      await muatLaporan();
+    })();
+  </script>
+</body>
+</html>

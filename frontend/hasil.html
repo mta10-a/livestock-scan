@@ -181,6 +181,14 @@
             </span>
             <span class="chevron" data-ikon="chevron"></span>
           </button>
+          ${hasil.kode_sertifikat ? `<a class="baris" href="sertifikat.html?kode=${encodeURIComponent(hasil.kode_sertifikat)}">
+            ${IKON.dokumen}
+            <span class="baris-utama">
+              <span class="baris-judul">Buka sertifikat hasil</span>
+              <span class="baris-meta">Kode ${esc(hasil.kode_sertifikat)} · bisa dicetak dan diverifikasi</span>
+            </span>
+            <span class="chevron" data-ikon="chevron"></span>
+          </a>` : ''}
         </div>
 
         <p class="cetak-saja cetak-kaki">Hasil ini dihasilkan model AI LivestockHealth Scan dan bersifat indikasi awal, bukan diagnosis resmi dokter hewan.</p>

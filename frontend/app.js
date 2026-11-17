@@ -29,6 +29,7 @@ const IKON = (() => {
     bagikan: bungkus('<circle cx="17.6" cy="5.6" r="2.6"/><circle cx="6.4" cy="12" r="2.6"/><circle cx="17.6" cy="18.4" r="2.6"/><path d="m8.8 10.8 6.3-3.7M8.8 13.2l6.3 3.7"/>'),
     salin: bungkus('<rect x="8.8" y="3.6" width="10.6" height="12.8" rx="1.6"/><path d="M15.4 20.4H6.6A1.8 1.8 0 0 1 4.8 18.6V7.6"/>'),
     chat: bungkus('<path d="M20.4 11.6a8.4 8.4 0 0 1-12.5 7.4L3.6 20.4l1.4-4.3A8.4 8.4 0 1 1 20.4 11.6Z"/><path d="M8.6 10.2h6.8M8.6 13.6h4.4"/>'),
+    dokter: bungkus('<circle cx="12" cy="12" r="8.4"/><path d="M12 8.2v7.6M8.2 12h7.6"/>'),
     cetak: bungkus('<path d="M7 8.4V4.6h10v3.8"/><rect x="3.8" y="8.4" width="16.4" height="7.2" rx="1.8"/><path d="M7 13.6h10v5.8H7z"/>'),
     peringatan: bungkus('<path d="M12 4.4 3.2 19.6h17.6L12 4.4Z"/><path d="M12 10v4.2M12 16.9h.01"/>'),
     cek: bungkus('<circle cx="12" cy="12" r="8.4"/><path d="m8.3 12.3 2.5 2.5 4.9-5.2"/>'),

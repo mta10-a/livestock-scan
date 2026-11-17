@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Peta Wabah - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Peta Wabah</span>
+        <span class="sub" id="badge-peta">Memuat…</span>
+      </span>
+      <span class="spacer"></span>
+      <a class="tombol mini" href="lapor.html">Lapor</a>
+    </header>
+
+    <main class="konten">
+      <h2 class="judul">Sebaran laporan wabah</h2>
+      <p class="subjudul">Titik berasal dari laporan peternak yang menyertakan lokasi saat melapor.</p>
+
+      <div class="stat-grid" id="stat-peta"></div>
+
+      <div class="peta-bungkus" id="peta-bungkus">
+        <div id="peta"></div>
+        <div class="peta-kosong" id="peta-kosong" hidden>
+          <p class="sedang tebal">Peta belum bisa dimuat</p>
+          <p class="kecil teks-redup">Sambungan internet diperlukan untuk peta. Daftar wilayah di bawah tetap bisa dibaca.</p>
+        </div>
+      </div>
+
+      <p class="kecil teks-redup" style="margin-top:8px">
+        Titik lokasi dibulatkan agar tidak menunjukkan kandang secara persis. Data ini berasal dari laporan sesama peternak, bukan catatan resmi Dinas Peternakan.
+      </p>
+
+      <div class="bagian">
+        <span class="label-kecil">Wilayah dengan laporan</span>
+        <a class="tautan-kecil" href="lapor.html">Tambah laporan</a>
+      </div>
+      <div id="daftar-wilayah">
+        <div class="memuat"><div class="spinner"></div><p class="kecil teks-redup">Memuat laporan…</p></div>
+      </div>
+
+      <div class="bagian"><span class="label-kecil">Laporan terbaru</span></div>
+      <div id="daftar-terbaru"></div>
+    </main>
+
+    <div id="nav-bawah"></div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    pasangLogo();
+    el('nav-bawah').innerHTML = navBawah('lapor');
+
+    const WARNA_SPESIES = { sapi: '#00673d', kambing: '#b97b12', ayam: '#b23b3b' };
+
+    function kartuStat(angka, ket) {
+      return `<div class="stat-kotak"><div class="stat-angka">${esc(angka)}</div><div class="stat-ket">${esc(ket)}</div></div>`;
+    }
+
+    function barisWilayah(w, tertinggi) {
+      const lebar = tertinggi ? Math.max(8, Math.round((w.jumlah_laporan / tertinggi) * 100)) : 0;
+      return `<div class="sebaran-baris">
+        <div class="baris-antara" style="margin-bottom:5px">
+          <span class="tebal sedang">${esc(w.kecamatan)}</span>
+          <span class="kecil teks-redup">${Number(w.jumlah_laporan)} laporan · ${Number(w.jumlah_sakit)} ekor</span>
+        </div>
+        <div class="bar-sebaran"><span style="width:${lebar}%"></span></div>
+        <div class="kecil teks-redup" style="margin-top:4px">Terakhir ${esc(formatTanggal(w.terakhir))}</div>
+      </div>`;
+    }
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+
+      let data;
+      try {
+        data = await api('/api/peta/sebaran');
+      } catch (err) {
+        el('badge-peta').textContent = 'Gagal memuat';
+        el('daftar-wilayah').innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
+        return;
+      }
+
+      el('badge-peta').textContent = `${data.total} laporan`;
+      el('stat-peta').innerHTML = [
+        kartuStat(data.total, 'Total laporan'),
+        kartuStat(data.titik.length, 'Titik di peta'),
+        kartuStat(data.wilayah.length, 'Wilayah terdampak'),
+      ].join('');
+
+      if (data.wilayah.length) {
+        const tertinggi = Math.max(...data.wilayah.map((w) => Number(w.jumlah_laporan)));
+        el('daftar-wilayah').innerHTML = `<div class="kartu">${data.wilayah.map((w) => barisWilayah(w, tertinggi)).join('')}</div>`;
+        el('daftar-terbaru').innerHTML = `<div class="grup">${data.titik.slice(0, 6).map((t) => `
+          <div class="baris">
+            <span class="lingkaran-kecil" style="background:${WARNA_SPESIES[t.spesies] || '#00673d'}"></span>
+            <span class="baris-utama">
+              <span class="baris-judul">${esc(t.penyakit)}</span>
+              <span class="baris-meta">${esc(spesiesInfo(t.spesies).nama)} · ${Number(t.jumlah_sakit)} ekor · ${esc(t.kecamatan)}</span>
+            </span>
+            <span class="kecil teks-redup">${esc(formatTanggal(t.created_at))}</span>
+          </div>`).join('')}</div>`;
+      } else {
+        el('daftar-wilayah').innerHTML = `<div class="kosong">
+          <span class="lingkaran" data-ikon="peta"></span>
+          <p>Belum ada laporan wabah. Laporan pertama Anda akan muncul di sini.</p>
+          <a class="tombol mini" href="lapor.html">Lapor wabah</a>
+        </div>`;
+        el('daftar-terbaru').innerHTML = '';
+      }
+
+      if (!window.L) {
+        el('peta').style.display = 'none';
+        el('peta-kosong').hidden = false;
+        return;
+      }
+
+      const peta = L.map('peta', { scrollWheelZoom: false }).setView([-2.4, 118], 4.7);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '&copy; OpenStreetMap',
+      }).addTo(peta);
+
+      data.titik.forEach((t) => {
+        L.circleMarker([t.lat, t.lng], {
+          radius: 8,
+          color: '#ffffff',
+          weight: 2,
+          fillColor: WARNA_SPESIES[t.spesies] || '#00673d',
+          fillOpacity: 0.9,
+        })
+          .addTo(peta)
+          .bindPopup(
+            `<b>${esc(t.penyakit)}</b><br>${esc(spesiesInfo(t.spesies).nama)} · ${Number(t.jumlah_sakit)} ekor<br>${esc(t.kecamatan)}<br><span style="color:#66756c">${esc(formatTanggal(t.created_at))}</span>`
+          );
+      });
+
+      if (data.titik.length) {
+        const batas = L.latLngBounds(data.titik.map((t) => [t.lat, t.lng]));
+        peta.fitBounds(batas.pad(0.25), { maxZoom: 11 });
+      }
+
+      setTimeout(() => peta.invalidateSize(), 200);
+    })();
+  </script>
+</body>
+</html>
