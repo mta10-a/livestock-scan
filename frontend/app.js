@@ -86,21 +86,57 @@ function toast(pesan) {
   t._jam = setTimeout(() => t.classList.remove('tampil'), 2800);
 }
 
-function navBawah(aktif) {
-  const item = (key, label, href) =>
-    `<a href="${href}" class="${aktif === key ? 'aktif' : ''}">${IKON[key]}<span>${label}</span></a>`;
+const NAV_PERAN = {
+  peternak: [
+    { kunci: 'beranda', ikon: 'beranda', label: 'Beranda', href: 'beranda.html' },
+    { kunci: 'riwayat', ikon: 'riwayat', label: 'Riwayat', href: 'riwayat.html' },
+    { kunci: 'scan', ikon: 'scan', label: 'Scan', href: 'scan.html' },
+    { kunci: 'lapor', ikon: 'lapor', label: 'Lapor', href: 'lapor.html' },
+  ],
+  dokter: [
+    { kunci: 'beranda', ikon: 'beranda', label: 'Beranda', href: 'beranda.html' },
+    { kunci: 'konsultasi', ikon: 'dokter', label: 'Konsultasi', href: 'konsultasi.html' },
+    { kunci: 'profil', ikon: 'dokumen', label: 'Profil', href: 'profil.html' },
+  ],
+  admin: [
+    { kunci: 'beranda', ikon: 'beranda', label: 'Beranda', href: 'beranda.html' },
+    { kunci: 'peta', ikon: 'peta', label: 'Peta', href: 'peta.html' },
+    { kunci: 'admin', ikon: 'dokumen', label: 'Admin', href: 'admin.html' },
+    { kunci: 'profil', ikon: 'dokumen', label: 'Profil', href: 'profil.html' },
+  ],
+};
+
+function peranTersimpan() {
+  try { return localStorage.getItem('peran_lhs') || 'peternak'; } catch { return 'peternak'; }
+}
+
+function navBawah(aktif, peran = 'peternak') {
+  const daftar = NAV_PERAN[peran] || NAV_PERAN.peternak;
+  const aliasPeternak = { peta: 'lapor', konsultasi: 'beranda', sertifikat: 'riwayat' };
+  const sorot = peran === 'peternak' ? (aliasPeternak[aktif] || aktif) : aktif;
   return `<nav class="nav-bawah">
-    ${item('beranda', 'Beranda', 'beranda.html')}
-    ${item('riwayat', 'Riwayat', 'riwayat.html')}
-    ${item('scan', 'Scan', 'scan.html')}
-    ${item('lapor', 'Lapor', 'lapor.html')}
+    ${daftar.map((n) => `<a href="${n.href}" class="${sorot === n.kunci ? 'aktif' : ''}">${IKON[n.ikon]}<span>${n.label}</span></a>`).join('')}
   </nav>`;
+}
+
+async function pasangNavBawah(aktif) {
+  const wadah = el('nav-bawah');
+  if (!wadah) return;
+  wadah.innerHTML = navBawah(aktif, peranTersimpan());
+  try {
+    const me = await api('/api/me');
+    if (me.peran) {
+      try { localStorage.setItem('peran_lhs', me.peran); } catch {}
+      wadah.innerHTML = navBawah(aktif, me.peran);
+    }
+  } catch {}
 }
 
 async function keluar() {
   try { await api('/api/logout', { method: 'POST' }); } catch {}
   sessionStorage.removeItem('hasil_scan');
   sessionStorage.removeItem('hasil_id');
+  try { localStorage.removeItem('peran_lhs'); } catch {}
   location.replace('login.html');
 }
 

@@ -64,7 +64,8 @@
       tombol.textContent = 'Memeriksa…';
 
       try {
-        await api('/api/login', { method: 'POST', body: { email, password } });
+        const masuk = await api('/api/login', { method: 'POST', body: { email, password } });
+        try { localStorage.setItem('peran_lhs', masuk.user?.peran || 'peternak'); } catch {}
         location.replace('beranda.html');
       } catch (err) {
         setPesan('pesan', err.message);

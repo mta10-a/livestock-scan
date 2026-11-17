@@ -61,29 +61,31 @@
       <div class="bagian"><span class="label-kecil" id="label-bagian-dokter">Akun dokter hewan</span></div>
       <div id="kartu-dokter"></div>
 
-      <div class="bagian"><span class="label-kecil">Ringkasan</span></div>
-      <div class="grup">
-        <div class="baris">
-          <span class="baris-utama">
-            <span class="baris-judul">Total pemeriksaan</span>
-            <span class="baris-meta">Sejak akun dibuat</span>
-          </span>
-          <span class="pil hijau" id="total">0</span>
+      <div id="bagian-ringkasan">
+        <div class="bagian"><span class="label-kecil">Ringkasan</span></div>
+        <div class="grup">
+          <div class="baris">
+            <span class="baris-utama">
+              <span class="baris-judul">Total pemeriksaan</span>
+              <span class="baris-meta">Sejak akun dibuat</span>
+            </span>
+            <span class="pil hijau" id="total">0</span>
+          </div>
+          <div class="baris">
+            <span class="baris-utama">
+              <span class="baris-judul">Sisa kuota scan</span>
+              <span class="baris-meta">Termasuk token yang sudah ditukar</span>
+            </span>
+            <span class="pil hijau" id="kuota">0</span>
+          </div>
+          <a class="baris" href="token.html">
+            <span class="baris-utama">
+              <span class="baris-judul">Tambah kuota</span>
+              <span class="baris-meta">Tukar kode token</span>
+            </span>
+            <span class="chevron" data-ikon="chevron"></span>
+          </a>
         </div>
-        <div class="baris">
-          <span class="baris-utama">
-            <span class="baris-judul">Sisa kuota scan</span>
-            <span class="baris-meta">Termasuk token yang sudah ditukar</span>
-          </span>
-          <span class="pil hijau" id="kuota">0</span>
-        </div>
-        <a class="baris" href="token.html">
-          <span class="baris-utama">
-            <span class="baris-judul">Tambah kuota</span>
-            <span class="baris-meta">Tukar kode token</span>
-          </span>
-          <span class="chevron" data-ikon="chevron"></span>
-        </a>
       </div>
     </main>
 
@@ -93,7 +95,7 @@
   <script src="app.js"></script>
   <script>
     pasangLogo();
-    el('nav-bawah').innerHTML = navBawah('');
+    pasangNavBawah('profil');
 
     function isi(me) {
       const dokter = me.peran === 'dokter';
@@ -111,6 +113,7 @@
       el('label-nama').textContent = me.peran === 'peternak' ? 'Nama pemilik' : 'Nama lengkap';
       el('label-bagian-dokter').textContent = dokter ? 'Status dokter' : admin ? 'Akses admin' : 'Akun dokter hewan';
       el('medan-peternakan').style.display = dokter || admin ? 'none' : '';
+      el('bagian-ringkasan').style.display = dokter || admin ? 'none' : '';
 
       el('nama').value = me.nama || '';
       el('email').value = me.email || '';

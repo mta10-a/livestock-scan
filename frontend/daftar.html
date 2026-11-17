@@ -74,6 +74,7 @@
 
       try {
         await api('/api/register', { method: 'POST', body: { nama, email, password } });
+        try { localStorage.setItem('peran_lhs', 'peternak'); } catch {}
         location.replace('beranda.html');
       } catch (err) {
         setPesan('pesan', err.message);

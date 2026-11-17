@@ -166,6 +166,17 @@ disimpan di riwayat supaya masih terlihat saat membuka hasil lama.
 Akun ini dibuat otomatis saat basis data masih kosong dan ditandai sebagai akun
 demo di aplikasi. Ganti kata sandinya sebelum dipakai di luar pengujian lokal.
 
+## Peran akun
+
+| Peran | Menu yang tampil |
+|---|---|
+| Peternak | Scan, riwayat, sertifikat, peta wabah, lapor wabah, konsultasi, token |
+| Dokter | Permintaan konsultasi dan profil/status STR |
+| Admin | Dashboard, peta sebaran, pemeriksaan terbaru, verifikasi dokter, pengguna |
+
+Menu mengikuti hak akses tiap peran. Endpoint backend tetap memeriksa peran, jadi
+halaman yang tidak tampil juga tidak bisa dipakai untuk mengubah data peran lain.
+
 ## Catatan
 
 - Hasilnya **indikasi awal, bukan diagnosis**. Tetap perlu dikonfirmasi dokter hewan.

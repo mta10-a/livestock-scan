@@ -31,7 +31,7 @@
   <script src="app.js"></script>
   <script>
     pasangLogo();
-    el('nav-bawah').innerHTML = navBawah('beranda');
+    pasangNavBawah('admin');
 
     const labelPeran = { peternak: 'abu', dokter: 'hijau', admin: 'kuning' };
 
@@ -196,7 +196,6 @@
 
         <div class="bagian">
           <span class="label-kecil">Pengguna</span>
-          <a class="tautan-kecil" href="konsultasi.html">Lihat konsultasi</a>
         </div>
         <form class="baris-antara" id="form-cari" style="margin-bottom:10px">
           <input class="cari" id="cari" type="search" placeholder="Cari nama atau email" maxlength="60" />
