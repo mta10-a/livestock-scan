@@ -16,6 +16,22 @@ module.exports = (app, { auth, authPeran, bodyJson }) => {
       .all()
       .map((b) => ({ penyakit: b.penyakit, jumlah: Number(b.jumlah) }));
 
+    const terbaru = db
+      .prepare(
+        `SELECT r.id, r.spesies, r.penyakit, r.confidence, r.created_at, u.nama
+         FROM riwayat r JOIN users u ON u.id = r.user_id
+         ORDER BY r.id DESC LIMIT 5`
+      )
+      .all()
+      .map((b) => ({
+        id: Number(b.id),
+        spesies: b.spesies,
+        penyakit: b.penyakit,
+        keyakinan: Number(b.confidence),
+        created_at: b.created_at,
+        nama: b.nama,
+      }));
+
     res.json({
       pengguna: {
         total: hitung('SELECT COUNT(*) AS n FROM users'),
@@ -39,6 +55,7 @@ module.exports = (app, { auth, authPeran, bodyJson }) => {
       },
       dokter_menunggu: hitung(`SELECT COUNT(*) AS n FROM dokter WHERE status = 'menunggu'`),
       penyakit_teratas: penyakit,
+      terbaru,
     });
   });
 

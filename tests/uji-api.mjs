@@ -370,6 +370,7 @@ async function main() {
 
   r = await kirim(B1, '/api/admin/ringkasan', { token: tokenAdmin });
   cek('RF-38 ringkasan admin berisi data nyata', r.status === 200 && r.data.pengguna?.total >= 3 && r.data.scan?.total >= 3, JSON.stringify(r.data).slice(0, 160));
+  cek('RF-38 ringkasan memuat pemeriksaan terbaru', Array.isArray(r.data.terbaru) && r.data.terbaru.length >= 3, JSON.stringify(r.data.terbaru || []).slice(0, 160));
 
   r = await kirim(B1, '/api/admin/ringkasan', { token: tokenA });
   cek('RF-38 ringkasan bukan untuk peternak -> 403', r.status === 403, String(r.status));
