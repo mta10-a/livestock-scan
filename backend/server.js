@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 
-const { db, DIR_DATA } = require('./db');
+const { db, DIR_DATA, kodeSertifikatBaru } = require('./db');
 const { rekomendasiUntuk } = require('./rekomendasi');
 
 const PORT = Number(process.env.PORT || 3000);
@@ -29,6 +29,9 @@ const HALAMAN_TERLINDUNGI = new Set([
   '/profil.html',
   '/lapor.html',
   '/token.html',
+  '/peta.html',
+  '/konsultasi.html',
+  '/admin.html',
 ]);
 const PAKET_TOKEN = [
   { kode: 'hemat-3', nama: 'Paket Hemat', jumlah: 3, harga: 15000 },
@@ -209,11 +212,22 @@ function dataPengguna(id) {
   const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
   if (!user) return null;
   const total = db.prepare('SELECT COUNT(*) AS n FROM riwayat WHERE user_id = ?').get(id).n;
+  const dokter = db
+    .prepare('SELECT nomor_str, wilayah, status, catatan FROM dokter WHERE user_id = ?')
+    .get(id);
   return {
     id: Number(user.id),
     nama: user.nama,
     email: user.email,
     peran: user.peran,
+    dokter: dokter
+      ? {
+          nomor_str: dokter.nomor_str,
+          wilayah: dokter.wilayah || '',
+          status: dokter.status,
+          catatan: dokter.catatan || '',
+        }
+      : null,
     sisa_scan: Number(user.sisa_scan),
     total_scan: Number(total),
     profil: {
@@ -242,6 +256,7 @@ function barisKeHasil(baris) {
     fitur_visual: fitur,
     rekomendasi: rekomendasiUntuk(baris.penyakit),
     pendapat_kedua: pendapat,
+    kode_sertifikat: baris.kode_sertifikat || null,
     model: baris.model || '',
     created_at: baris.created_at,
   };
@@ -255,6 +270,8 @@ function barisKeLaporan(baris, userId) {
     jumlah_sakit: Number(baris.jumlah_sakit),
     kecamatan: baris.kecamatan,
     catatan: baris.catatan || '',
+    lat: baris.lat === null || baris.lat === undefined ? null : Number(baris.lat),
+    lng: baris.lng === null || baris.lng === undefined ? null : Number(baris.lng),
     milik_sendiri: Number(baris.user_id) === Number(userId),
     created_at: baris.created_at,
   };
@@ -270,6 +287,17 @@ function auth(req, res, next) {
   }
   req.userId = Number(user.id);
   next();
+}
+
+function authPeran(...izin) {
+  return (req, res, next) => {
+    const user = db.prepare('SELECT peran FROM users WHERE id = ?').get(req.userId);
+    if (!user || !izin.includes(user.peran)) {
+      return res.status(403).json({ error: `Akses hanya untuk akun ${izin.join(' atau ')}.` });
+    }
+    req.peran = user.peran;
+    next();
+  };
 }
 
 app.post('/api/register', batasiPercobaan, (req, res) => {
@@ -392,6 +420,8 @@ app.post('/api/laporan', auth, (req, res) => {
   const kecamatan = String(body.kecamatan || '').trim().slice(0, 80);
   const catatan = String(body.catatan || '').trim().slice(0, 300);
   const jumlahSakit = Number(body.jumlah_sakit);
+  const lat = body.lat === undefined || body.lat === null || body.lat === '' ? null : Number(body.lat);
+  const lng = body.lng === undefined || body.lng === null || body.lng === '' ? null : Number(body.lng);
 
   if (!SPESIES_VALID.includes(spesies)) {
     return res.status(400).json({ error: 'Jenis ternak tidak valid.' });
@@ -405,13 +435,31 @@ app.post('/api/laporan', auth, (req, res) => {
   if (kecamatan.length < 3) {
     return res.status(400).json({ error: 'Kecamatan atau wilayah minimal 3 karakter.' });
   }
+  if ((lat === null) !== (lng === null)) {
+    return res.status(400).json({ error: 'Titik lokasi harus berisi lintang dan bujur sekaligus.' });
+  }
+  if (lat !== null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) {
+    return res.status(400).json({ error: 'Lintang lokasi tidak valid.' });
+  }
+  if (lng !== null && (!Number.isFinite(lng) || lng < -180 || lng > 180)) {
+    return res.status(400).json({ error: 'Bujur lokasi tidak valid.' });
+  }
 
   const info = db
     .prepare(
-      `INSERT INTO laporan_wabah (user_id, spesies, penyakit, jumlah_sakit, kecamatan, catatan)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO laporan_wabah (user_id, spesies, penyakit, jumlah_sakit, kecamatan, catatan, lat, lng)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(req.userId, spesies, penyakit, jumlahSakit, kecamatan, catatan || null);
+    .run(
+      req.userId,
+      spesies,
+      penyakit,
+      jumlahSakit,
+      kecamatan,
+      catatan || null,
+      lat === null ? null : Number(lat.toFixed(5)),
+      lng === null ? null : Number(lng.toFixed(5))
+    );
 
   const baris = db.prepare('SELECT * FROM laporan_wabah WHERE id = ?').get(Number(info.lastInsertRowid));
   res.status(201).json({ laporan: barisKeLaporan(baris, req.userId) });
@@ -551,8 +599,8 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
 
     const info = db
       .prepare(
-        `INSERT INTO riwayat (user_id, spesies, penyakit, confidence, peringatan, gejala, fitur_visual, model, pendapat_kedua)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO riwayat (user_id, spesies, penyakit, confidence, peringatan, gejala, fitur_visual, model, pendapat_kedua, kode_sertifikat)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         req.userId,
@@ -563,7 +611,8 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
         gejala || null,
         JSON.stringify(prediksi.fitur_visual || []),
         prediksi.model || null,
-        prediksi.pendapat_kedua ? JSON.stringify(prediksi.pendapat_kedua) : null
+        prediksi.pendapat_kedua ? JSON.stringify(prediksi.pendapat_kedua) : null,
+        kodeSertifikatBaru()
       );
 
     db.exec('COMMIT');
@@ -583,10 +632,16 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
   res.status(201).json({ hasil, sisa_scan: profil.sisa_scan, total_scan: profil.total_scan });
 });
 
+require('./rute/sertifikat')(app, { auth });
+require('./rute/peta')(app, { auth });
+require('./rute/dokter')(app, { auth, bodyJson });
+require('./rute/konsultasi')(app, { auth, bodyJson });
+require('./rute/admin')(app, { auth, authPeran, bodyJson });
+
 app.use((err, _req, res, _next) => {
   if (err instanceof multer.MulterError) {
     const pesan = err.code === 'LIMIT_FILE_SIZE'
-      ? 'Ukuran foto melebihi 5 MB.'
+      ? (err.field === 'berkas' ? 'Ukuran berkas STR melebihi 2 MB.' : 'Ukuran foto melebihi 5 MB.')
       : err.field || 'Berkas tidak dapat diproses.';
     return res.status(400).json({ error: pesan });
   }
