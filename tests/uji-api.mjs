@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,6 +18,42 @@ const catatan = [];
 function cek(nama, kondisi, detail = '') {
   if (kondisi) { lulus++; catatan.push(`  OK   ${nama}`); }
   else { gagal++; catatan.push(`  GAGAL ${nama}${detail ? ' -> ' + detail : ''}`); }
+}
+
+async function bersihkanAkun(email) {
+  try {
+    const { DatabaseSync } = await import('node:sqlite');
+    const dirData = process.env.DATA_DIR || path.join(DIR_BACKEND, 'data');
+    const db = new DatabaseSync(path.join(dirData, 'livestock.db'));
+    const daftar = email.map((e) => String(e).toLowerCase());
+    const ph = daftar.map(() => '?').join(',');
+    const id = db.prepare(`SELECT id FROM users WHERE email IN (${ph})`).all(...daftar).map((u) => Number(u.id));
+    if (!id.length) { db.close(); return; }
+
+    const p = id.map(() => '?').join(',');
+    db.exec('BEGIN');
+    try {
+      db.prepare(`DELETE FROM pesan_konsultasi WHERE konsultasi_id IN (SELECT id FROM konsultasi WHERE user_id IN (${p}) OR dokter_id IN (${p}))`).run(...id, ...id);
+      db.prepare(`DELETE FROM konsultasi WHERE user_id IN (${p}) OR dokter_id IN (${p})`).run(...id, ...id);
+      db.prepare(`DELETE FROM riwayat WHERE user_id IN (${p})`).run(...id);
+      db.prepare(`DELETE FROM laporan_wabah WHERE user_id IN (${p})`).run(...id);
+      db.prepare(`DELETE FROM transaksi WHERE user_id IN (${p})`).run(...id);
+      db.prepare(`DELETE FROM dokter WHERE user_id IN (${p})`).run(...id);
+      db.prepare(`DELETE FROM users WHERE id IN (${p})`).run(...id);
+      db.exec('COMMIT');
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw e;
+    }
+    db.close();
+
+    const dirStr = path.join(dirData, 'berkas-str');
+    if (fs.existsSync(dirStr)) {
+      for (const nama of fs.readdirSync(dirStr)) {
+        if (id.includes(Number(String(nama).split('-')[0]))) fs.rmSync(path.join(dirStr, nama));
+      }
+    }
+  } catch {}
 }
 
 async function tungguBackend(base, percobaan = 40) {
@@ -449,6 +486,8 @@ async function main() {
 
   const html = await fetch(B1 + '/login.html');
   cek('Frontend login.html tersaji dari backend', html.status === 200, String(html.status));
+
+  await bersihkanAkun([emailA, emailB]);
 
   console.log(catatan.join('\n'));
   console.log(`\nRingkasan: ${lulus} lulus, ${gagal} gagal, dari ${lulus + gagal} pemeriksaan.`);
