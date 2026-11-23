@@ -522,8 +522,7 @@ svg { display: block; }
 
 .nav-bawah {
   flex: 0 0 auto;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
   gap: 4px;
   padding: 8px 10px 10px;
   background: var(--putih);
@@ -532,6 +531,7 @@ svg { display: block; }
   z-index: 2;
 }
 .nav-bawah a {
+  flex: 1 1 0;
   display: flex;
   flex-direction: column;
   align-items: center;

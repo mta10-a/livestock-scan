@@ -37,6 +37,7 @@ async function bersihkanAkun(email) {
       db.prepare(`DELETE FROM konsultasi WHERE user_id IN (${p}) OR dokter_id IN (${p})`).run(...id, ...id);
       db.prepare(`DELETE FROM riwayat WHERE user_id IN (${p})`).run(...id);
       db.prepare(`DELETE FROM laporan_wabah WHERE user_id IN (${p})`).run(...id);
+      db.prepare(`DELETE FROM pesanan WHERE user_id IN (${p})`).run(...id);
       db.prepare(`DELETE FROM transaksi WHERE user_id IN (${p})`).run(...id);
       db.prepare(`DELETE FROM dokter WHERE user_id IN (${p})`).run(...id);
       db.prepare(`DELETE FROM users WHERE id IN (${p})`).run(...id);
@@ -299,6 +300,7 @@ async function main() {
 
   r = await kirim(B1, '/api/token/paket', { token: tokenA });
   cek('RF-27 daftar paket token -> 200', r.status === 200 && r.data.paket?.length >= 3, String(r.status));
+  cek('RF-28 daftar paket memuat biaya layanan', r.data.biaya_layanan === 2500, String(r.data.biaya_layanan));
 
   r = await kirim(B1, '/api/token/tukar', { method: 'POST', token: tokenA, body: { kode: 'KODE-PALSU' } });
   cek('RF-27 kode token tidak dikenal -> 404', r.status === 404, String(r.status));
@@ -312,12 +314,52 @@ async function main() {
   r = await kirim(B1, '/api/token/transaksi', { token: tokenA });
   cek('RF-29 riwayat transaksi tercatat', r.status === 200 && r.data.transaksi?.length === 1, JSON.stringify(r.data).slice(0, 120));
 
+  r = await kirim(B1, '/api/pembayaran', { method: 'POST', token: tokenA, body: { paket: 'tidak-ada', metode: 'qris' } });
+  cek('RF-28 paket pembayaran tidak dikenal -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/pembayaran', { method: 'POST', token: tokenA, body: { paket: 'hemat-3', metode: 'tunai' } });
+  cek('RF-28 metode pembayaran tidak dikenal -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/pembayaran', { method: 'POST', token: tokenA, body: { paket: 'hemat-3', metode: 'qris' } });
+  const pesanan = r.data.pesanan;
+  cek(
+    'RF-28 pesanan dibuat dengan biaya layanan',
+    r.status === 201 && pesanan?.total === 17500 && pesanan?.biaya_layanan === 2500,
+    JSON.stringify(r.data).slice(0, 160)
+  );
+  cek('RF-28 pesanan memuat metode pembayaran', pesanan?.metode_label === 'QRIS', String(pesanan?.metode_label));
+
+  r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}`, {});
+  cek('RF-28 pesanan tanpa login -> 401', r.status === 401, String(r.status));
+
+  r = await kirim(B1, '/api/me', { token: tokenA });
+  const kuotaSebelumBayar = r.data.sisa_scan;
+
+  r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}/bayar`, { method: 'POST', token: tokenA });
+  cek(
+    'RF-30 pembayaran menambah kuota otomatis',
+    r.status === 200 && r.data.pesanan?.status === 'dibayar' && r.data.sisa_scan === kuotaSebelumBayar + 3,
+    JSON.stringify(r.data).slice(0, 160)
+  );
+
+  r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}/bayar`, { method: 'POST', token: tokenA });
+  cek('RF-30 pembayaran ganda ditolak -> 409', r.status === 409, String(r.status));
+
+  r = await kirim(B1, '/api/token/transaksi', { token: tokenA });
+  cek(
+    'RF-30 transaksi pembelian tercatat',
+    r.status === 200 && r.data.transaksi?.some((t) => t.kode === pesanan?.kode),
+    JSON.stringify(r.data).slice(0, 160)
+  );
+
   r = await kirim(B1, '/api/token/tukar', { method: 'POST', body: { kode: 'LHS-DEMO-3' } });
   cek('RF-27 tukar token tanpa login -> 401', r.status === 401, String(r.status));
 
   const emailB = emailUnik();
   const rb = await kirim(B1, '/api/register', { method: 'POST', body: { nama: 'Siti Ternak', email: emailB, password: 'rahasia123' } });
   const tokenB = rb.data.token;
+  r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}`, { token: tokenB });
+  cek('RF-28 pesanan bukan milik pengguna -> 404', r.status === 404, String(r.status));
   r = await kirim(B1, '/api/riwayat', { token: tokenB });
   cek('RF-18 pengguna lain tidak melihat riwayat orang lain', r.data.riwayat?.length === 0, String(r.data.riwayat?.length));
 
@@ -407,6 +449,7 @@ async function main() {
 
   r = await kirim(B1, '/api/admin/ringkasan', { token: tokenAdmin });
   cek('RF-38 ringkasan admin berisi data nyata', r.status === 200 && r.data.pengguna?.total >= 3 && r.data.scan?.total >= 3, JSON.stringify(r.data).slice(0, 160));
+  cek('RF-30 ringkasan admin memuat pendapatan', Number(r.data.pendapatan) >= 17500, String(r.data.pendapatan));
   cek('RF-38 ringkasan memuat pemeriksaan terbaru', Array.isArray(r.data.terbaru) && r.data.terbaru.length >= 3, JSON.stringify(r.data.terbaru || []).slice(0, 160));
 
   r = await kirim(B1, '/api/admin/ringkasan', { token: tokenA });
@@ -428,6 +471,30 @@ async function main() {
 
   r = await kirim(B1, '/api/me', { token: tokenB });
   cek('RF-04 peran berubah menjadi dokter setelah verifikasi', r.data.peran === 'dokter', String(r.data.peran));
+  const idB = r.data.id;
+
+  r = await kirim(B1, '/api/dokter/jadwal', { method: 'PUT', token: tokenB, body: { hari: 'Senin-Jumat', jam: '08.00-16.00' } });
+  cek(
+    'RF-35 dokter mengatur jadwal praktik',
+    r.status === 200 && r.data.dokter?.jadwal_hari === 'Senin-Jumat' && r.data.dokter?.jadwal_jam === '08.00-16.00',
+    JSON.stringify(r.data).slice(0, 160)
+  );
+
+  r = await kirim(B1, '/api/me', { token: tokenB });
+  cek('RF-35 jadwal tersimpan di profil dokter', r.data.dokter?.jadwal === 'Senin-Jumat, 08.00-16.00', JSON.stringify(r.data.dokter).slice(0, 160));
+
+  r = await kirim(B1, '/api/dokter/jadwal', { method: 'PUT', token: tokenB, body: { hari: 'Senin', jam: '' } });
+  cek('RF-35 jadwal tidak lengkap -> 400', r.status === 400, String(r.status));
+
+  r = await kirim(B1, '/api/dokter/jadwal', { method: 'PUT', token: tokenA, body: { hari: 'Senin-Jumat', jam: '08.00-16.00' } });
+  cek('RF-35 jadwal hanya untuk dokter -> 403', r.status === 403, String(r.status));
+
+  r = await kirim(B1, '/api/dokter/tersedia', { token: tokenA });
+  cek(
+    'RF-35 dokter dan jadwal tampil untuk peternak',
+    r.status === 200 && r.data.dokter?.some((d) => d.id === idB && d.jadwal.includes('08.00-16.00')),
+    JSON.stringify(r.data).slice(0, 160)
+  );
 
   r = await kirim(B1, '/api/admin/pengguna?q=Siti', { token: tokenAdmin });
   cek('RF-39 pencarian pengguna di admin', r.status === 200 && r.data.pengguna?.some((u) => u.email === emailB), JSON.stringify(r.data).slice(0, 160));
@@ -460,7 +527,31 @@ async function main() {
   r = await kirim(B1, `/api/konsultasi/${idKonsul}/pesan`, { method: 'POST', token: tokenA, body: { isi: 'Masih mau tanya' } });
   cek('RF-34 pesan setelah ditutup -> 409', r.status === 409, String(r.status));
 
-  for (const berkas of ['peta.html', 'konsultasi.html', 'sertifikat.html', 'admin.html']) {
+  r = await kirim(B1, '/api/dokter/riwayat', { token: tokenB });
+  cek(
+    'RF-36 riwayat jawaban dokter memuat konsultasi selesai',
+    r.status === 200 && r.data.riwayat?.some((k) => k.id === idKonsul),
+    JSON.stringify(r.data).slice(0, 160)
+  );
+
+  r = await kirim(B1, '/api/dokter/aktivitas', { token: tokenB });
+  cek(
+    'RF-37 rekap aktivitas dokter terisi',
+    r.status === 200 && r.data.aktivitas?.selesai >= 1 && r.data.aktivitas?.pesan >= 1,
+    JSON.stringify(r.data).slice(0, 160)
+  );
+
+  r = await kirim(B1, '/api/dokter/aktivitas', { token: tokenA });
+  cek('RF-37 aktivitas hanya untuk dokter -> 403', r.status === 403, String(r.status));
+
+  r = await kirim(B1, '/api/admin/dokter?status=terverifikasi', { token: tokenAdmin });
+  cek(
+    'RF-37 admin melihat rekap dokter terverifikasi',
+    r.status === 200 && r.data.dokter?.some((d) => d.user_id === idB && d.selesai >= 1),
+    JSON.stringify(r.data).slice(0, 160)
+  );
+
+  for (const berkas of ['peta.html', 'konsultasi.html', 'sertifikat.html', 'admin.html', 'token.html', 'bayar.html']) {
     const h = await fetch(`${B1}/${berkas}`);
     cek(`Halaman ${berkas} tersaji`, h.status === 200, String(h.status));
   }

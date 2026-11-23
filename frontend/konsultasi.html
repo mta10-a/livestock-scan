@@ -58,6 +58,16 @@
       </div>`;
     }
 
+    function kartuDokterTersedia(d) {
+      return `<div class="baris">
+        <span class="baris-utama">
+          <span class="baris-judul">${esc(d.nama)}</span>
+          <span class="baris-meta">${esc(d.wilayah || 'Wilayah belum diisi')} · ${d.jadwal ? 'Jadwal ' + esc(d.jadwal) : 'Jadwal belum diatur'}</span>
+        </span>
+        <span class="pil hijau">dokter</span>
+      </div>`;
+    }
+
     function pasangTombolAmbil() {
       document.querySelectorAll('[data-ambil]').forEach((tombol) => {
         tombol.onclick = async () => {
@@ -89,6 +99,7 @@
 
       if (peranSaya === 'peternak') {
         const { riwayat } = await api('/api/riwayat').catch(() => ({ riwayat: [] }));
+        const { dokter } = await api('/api/dokter/tersedia').catch(() => ({ dokter: [] }));
         const pilihanRiwayat = riwayat.slice(0, 12).map((r) =>
           `<option value="${Number(r.id)}">${esc(r.penyakit)} · ${esc(formatTanggal(r.created_at))}</option>`
         ).join('');
@@ -96,6 +107,11 @@
         el('konten').innerHTML = `
           <h2 class="judul">Tanya dokter hewan</h2>
           <p class="subjudul">Ceritakan gejala yang terlihat. Dokter akan membalas di menu ini.</p>
+
+          ${dokter.length ? `
+            <div class="bagian"><span class="label-kecil">Dokter tersedia</span></div>
+            <div class="grup">${dokter.map(kartuDokterTersedia).join('')}</div>
+          ` : ''}
 
           <form class="kartu" id="form-konsultasi" style="margin-top:16px">
             <div class="medan">
@@ -151,15 +167,19 @@
       }
 
       const daftar = el('daftar-konsultasi');
-      const menunggu = data.konsultasi.filter((k) => k.status === 'menunggu' && !k.nama_dokter);
-      const diambil = data.konsultasi.filter((k) => !(k.status === 'menunggu' && !k.nama_dokter));
+      const belum = data.konsultasi.filter((k) => k.status === 'menunggu' && !k.nama_dokter);
+      const aktif = data.konsultasi.filter((k) => k.status === 'aktif');
+      const selesai = data.konsultasi.filter((k) => k.status === 'selesai');
 
-      if (peranSaya === 'dokter' && menunggu.length) {
+      if (peranSaya === 'dokter') {
+        const kosong = (teks) => `<div class="baris"><span class="baris-meta">${teks}</span></div>`;
         daftar.innerHTML = `
           <div class="bagian"><span class="label-kecil">Belum diambil</span></div>
-          <div class="grup">${menunggu.map((k) => kartuKonsultasi(k, true)).join('')}</div>
+          <div class="grup">${belum.length ? belum.map((k) => kartuKonsultasi(k, true)).join('') : kosong('Belum ada permintaan baru.')}</div>
           <div class="bagian"><span class="label-kecil">Sedang saya tangani</span></div>
-          <div class="grup">${diambil.length ? diambil.map((k) => kartuKonsultasi(k, false)).join('') : '<div class="baris"><span class="baris-meta">Belum ada.</span></div>'}</div>
+          <div class="grup">${aktif.length ? aktif.map((k) => kartuKonsultasi(k, false)).join('') : kosong('Belum ada percakapan berjalan.')}</div>
+          <div class="bagian"><span class="label-kecil">Selesai</span></div>
+          <div class="grup">${selesai.length ? selesai.map((k) => kartuKonsultasi(k, false)).join('') : kosong('Belum ada riwayat jawaban.')}</div>
         `;
       } else {
         daftar.innerHTML = data.konsultasi.length
@@ -215,11 +235,12 @@
           : peranSaya === 'admin'
             ? 'Mode pantau admin: percakapan hanya bisa dibaca.'
             : 'Anda belum bisa membalas percakapan ini.';
+      const jadwalDokter = k.jadwal_dokter ? ` · jadwal ${esc(k.jadwal_dokter)}` : '';
 
       el('konten').innerHTML = `
         <a class="tautan-kecil" href="konsultasi.html">Kembali ke daftar</a>
         <h2 class="judul" style="margin-top:8px">${esc(k.topik)}</h2>
-        <p class="subjudul">${esc(k.nama_dokter || 'Belum diambil dokter')} · ${labelStatus[k.status] || ''}</p>
+        <p class="subjudul">${esc(k.nama_dokter || 'Belum diambil dokter')} · ${labelStatus[k.status] || ''}${jadwalDokter}</p>
 
         <div class="obrolan" id="obrolan">
           ${k.pesan.length ? k.pesan.map(gelembung).join('') : '<div class="kosong"><span class="lingkaran" data-ikon="chat"></span><p>Belum ada balasan. Tulis pesan pertama Anda.</p></div>'}

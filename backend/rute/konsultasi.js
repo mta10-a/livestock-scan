@@ -4,11 +4,14 @@ const PILIH_KONSULTASI = `
   SELECT k.*,
          u.nama AS nama_peternak,
          d.nama AS nama_dokter,
+         dk.jadwal_hari AS jadwal_hari,
+         dk.jadwal_jam AS jadwal_jam,
          (SELECT COUNT(*) FROM pesan_konsultasi p WHERE p.konsultasi_id = k.id) AS jumlah_pesan,
          (SELECT MAX(p.created_at) FROM pesan_konsultasi p WHERE p.konsultasi_id = k.id) AS pesan_terakhir
   FROM konsultasi k
   JOIN users u ON u.id = k.user_id
   LEFT JOIN users d ON d.id = k.dokter_id
+  LEFT JOIN dokter dk ON dk.user_id = k.dokter_id
 `;
 
 function ringkas(b, peran, userId) {
@@ -20,6 +23,9 @@ function ringkas(b, peran, userId) {
     dokter_id: b.dokter_id ? Number(b.dokter_id) : null,
     nama_peternak: b.nama_peternak,
     nama_dokter: b.nama_dokter || '',
+    jadwal_dokter: b.jadwal_hari
+      ? `${b.jadwal_hari}, ${b.jadwal_jam || ''}`.replace(/, $/, '')
+      : '',
     lawan: peran === 'dokter' ? b.nama_peternak : (b.nama_dokter || 'Belum diambil dokter'),
     jumlah_pesan: Number(b.jumlah_pesan),
     created_at: b.created_at,

@@ -64,6 +64,22 @@ db.exec(`
     created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
   );
 
+  CREATE TABLE IF NOT EXISTS pesanan (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    kode        TEXT    NOT NULL UNIQUE,
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    paket_kode  TEXT    NOT NULL,
+    nama_paket  TEXT    NOT NULL,
+    jumlah_scan INTEGER NOT NULL,
+    harga       INTEGER NOT NULL,
+    biaya       INTEGER NOT NULL DEFAULT 0,
+    total       INTEGER NOT NULL,
+    metode      TEXT    NOT NULL,
+    status      TEXT    NOT NULL DEFAULT 'menunggu',
+    created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    dibayar_at  TEXT
+  );
+
   CREATE TABLE IF NOT EXISTS dokter (
     user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     nomor_str  TEXT    NOT NULL,
@@ -98,6 +114,7 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_laporan_waktu ON laporan_wabah(id DESC);
   CREATE INDEX IF NOT EXISTS idx_laporan_user ON laporan_wabah(user_id, id DESC);
   CREATE UNIQUE INDEX IF NOT EXISTS idx_transaksi_unik ON transaksi(user_id, kode);
+  CREATE INDEX IF NOT EXISTS idx_pesanan_user ON pesanan(user_id, id DESC);
   CREATE INDEX IF NOT EXISTS idx_konsultasi_user ON konsultasi(user_id, id DESC);
   CREATE INDEX IF NOT EXISTS idx_konsultasi_dokter ON konsultasi(dokter_id, status);
   CREATE INDEX IF NOT EXISTS idx_pesan_konsultasi ON pesan_konsultasi(konsultasi_id, id);
@@ -113,6 +130,8 @@ tambahKolom('riwayat', 'pendapat_kedua', 'TEXT');
 tambahKolom('riwayat', 'kode_sertifikat', 'TEXT');
 tambahKolom('laporan_wabah', 'lat', 'REAL');
 tambahKolom('laporan_wabah', 'lng', 'REAL');
+tambahKolom('dokter', 'jadwal_hari', 'TEXT');
+tambahKolom('dokter', 'jadwal_jam', 'TEXT');
 tambahKolom('users', 'token_version', 'INTEGER NOT NULL DEFAULT 0');
 tambahKolom('users', 'nama_peternakan', 'TEXT');
 tambahKolom('users', 'alamat', 'TEXT');
@@ -161,6 +180,12 @@ if (akunDokter && !db.prepare('SELECT user_id FROM dokter WHERE user_id = ?').ge
     `INSERT INTO dokter (user_id, nomor_str, wilayah, status, catatan, diputuskan)
      VALUES (?, ?, ?, 'terverifikasi', ?, datetime('now'))`
   ).run(akunDokter.id, 'DEMO-STR-0001', 'Kota Bandung', 'Akun contoh untuk demo konsultasi');
+}
+if (akunDokter) {
+  db.prepare(
+    `UPDATE dokter SET jadwal_hari = COALESCE(jadwal_hari, 'Senin-Jumat'),
+     jadwal_jam = COALESCE(jadwal_jam, '08.00-16.00') WHERE user_id = ?`
+  ).run(akunDokter.id);
 }
 
 for (const baris of db.prepare('SELECT id FROM riwayat WHERE kode_sertifikat IS NULL').all()) {

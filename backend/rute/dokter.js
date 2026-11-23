@@ -31,6 +31,11 @@ function barisDokter(userId) {
     status: baris.status,
     catatan: baris.catatan || '',
     ada_berkas: Boolean(baris.berkas),
+    jadwal_hari: baris.jadwal_hari || '',
+    jadwal_jam: baris.jadwal_jam || '',
+    jadwal: baris.jadwal_hari
+      ? `${baris.jadwal_hari}, ${baris.jadwal_jam || ''}`.replace(/, $/, '')
+      : '',
     dibuat: baris.dibuat,
     diputuskan: baris.diputuskan,
   };
@@ -44,10 +49,105 @@ function simpanBerkas(userId, file) {
   return path.posix.join('berkas-str', nama);
 }
 
-module.exports = (app, { auth, bodyJson }) => {
+module.exports = (app, { auth, authPeran, bodyJson }) => {
   app.get('/api/dokter/status', auth, (req, res) => {
     const user = db.prepare('SELECT peran FROM users WHERE id = ?').get(req.userId);
     res.json({ peran: user ? user.peran : 'peternak', dokter: barisDokter(req.userId) });
+  });
+
+  app.get('/api/dokter/tersedia', auth, (_req, res) => {
+    const baris = db
+      .prepare(
+        `SELECT u.id, u.nama, d.wilayah, d.jadwal_hari, d.jadwal_jam
+         FROM dokter d JOIN users u ON u.id = d.user_id
+         WHERE d.status = 'terverifikasi'
+         ORDER BY u.nama`
+      )
+      .all();
+
+    res.json({
+      dokter: baris.map((b) => ({
+        id: Number(b.id),
+        nama: b.nama,
+        wilayah: b.wilayah || '',
+        jadwal_hari: b.jadwal_hari || '',
+        jadwal_jam: b.jadwal_jam || '',
+        jadwal: b.jadwal_hari
+          ? `${b.jadwal_hari}, ${b.jadwal_jam || ''}`.replace(/, $/, '')
+          : '',
+      })),
+    });
+  });
+
+  app.put('/api/dokter/jadwal', auth, authPeran('dokter'), (req, res) => {
+    const body = bodyJson(req);
+    const hari = String(body.hari || '').trim().slice(0, 40);
+    const jam = String(body.jam || '').trim().slice(0, 40);
+
+    if (Boolean(hari) !== Boolean(jam)) {
+      return res.status(400).json({ error: 'Isi hari dan jam praktik bersamaan.' });
+    }
+    if (hari && hari.length < 3) {
+      return res.status(400).json({ error: 'Hari praktik minimal 3 karakter.' });
+    }
+    if (jam && jam.length < 3) {
+      return res.status(400).json({ error: 'Jam praktik minimal 3 karakter.' });
+    }
+    if (hari && !/^[A-Za-z0-9 .,/&-]+$/.test(hari)) {
+      return res.status(400).json({ error: 'Hari praktik hanya boleh berisi huruf, angka, spasi, titik, koma, garis miring, dan tanda hubung.' });
+    }
+    if (jam && !/^[0-9.: -]+$/.test(jam)) {
+      return res.status(400).json({ error: 'Jam praktik hanya boleh berisi angka, titik, titik dua, spasi, dan tanda hubung.' });
+    }
+
+    db.prepare('UPDATE dokter SET jadwal_hari = ?, jadwal_jam = ? WHERE user_id = ?')
+      .run(hari || null, jam || null, req.userId);
+
+    res.json({
+      dokter: barisDokter(req.userId),
+      pesan: hari ? 'Jadwal praktik disimpan.' : 'Jadwal praktik dikosongkan.',
+    });
+  });
+
+  app.get('/api/dokter/riwayat', auth, authPeran('dokter'), (req, res) => {
+    const baris = db
+      .prepare(
+        `SELECT k.id, k.topik, k.created_at, k.updated_at,
+                u.nama AS nama_peternak,
+                (SELECT COUNT(*) FROM pesan_konsultasi p WHERE p.konsultasi_id = k.id) AS jumlah_pesan,
+                (SELECT MAX(p.created_at) FROM pesan_konsultasi p WHERE p.konsultasi_id = k.id) AS pesan_terakhir
+         FROM konsultasi k JOIN users u ON u.id = k.user_id
+         WHERE k.dokter_id = ? AND k.status = 'selesai'
+         ORDER BY COALESCE(pesan_terakhir, k.updated_at) DESC LIMIT 50`
+      )
+      .all(req.userId);
+
+    res.json({
+      riwayat: baris.map((b) => ({
+        id: Number(b.id),
+        topik: b.topik,
+        nama_peternak: b.nama_peternak,
+        jumlah_pesan: Number(b.jumlah_pesan),
+        created_at: b.created_at,
+        selesai: b.pesan_terakhir || b.updated_at,
+      })),
+    });
+  });
+
+  app.get('/api/dokter/aktivitas', auth, authPeran('dokter'), (req, res) => {
+    const hitung = (sql) => Number(db.prepare(sql).get(req.userId).n);
+    const terakhir = db
+      .prepare('SELECT MAX(created_at) AS t FROM pesan_konsultasi WHERE pengirim_id = ?')
+      .get(req.userId).t;
+
+    res.json({
+      aktivitas: {
+        selesai: hitung(`SELECT COUNT(*) AS n FROM konsultasi WHERE dokter_id = ? AND status = 'selesai'`),
+        aktif: hitung(`SELECT COUNT(*) AS n FROM konsultasi WHERE dokter_id = ? AND status = 'aktif'`),
+        pesan: hitung('SELECT COUNT(*) AS n FROM pesan_konsultasi WHERE pengirim_id = ?'),
+        terakhir: terakhir || null,
+      },
+    });
   });
 
   app.post('/api/dokter/daftar', auth, unggahStr.single('berkas'), (req, res) => {

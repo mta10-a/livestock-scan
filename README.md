@@ -12,7 +12,7 @@ tingkat keyakinan dan saran penanganan.
 
 | Folder | Isi |
 |---|---|
-| `frontend/` | Halaman HTML/CSS/JS yang dibuka di browser (14 halaman) |
+| `frontend/` | Halaman HTML/CSS/JS yang dibuka di browser (15 halaman) |
 | `backend/` | Server Node.js (Express + SQLite): akun, kuota, riwayat, dan pemanggil layanan AI |
 | `ai-service/` | Layanan Python (Flask) yang menganalisis foto ternak |
 | `tests/` | Skrip uji otomatis API |
@@ -30,9 +30,12 @@ aplikasinya di browser. Nomor port dan batas pemakaian diatur di `config.py`.
 
 ## Progres fitur
 
-Terpakai **35 dari 40** kebutuhan fungsional (87,5%). Dengan hitungan ketat,
-RF-27 baru sebatas penukaran kode token (belum ada pembayaran daring), jadi
-hitungan amannya 34 RF (**85%**).
+Terpakai **40 dari 40** kebutuhan fungsional (100%). Satu catatan jujur: RF-28
+(payment gateway) berjalan dalam **mode simulasi** karena tidak ada kredensial
+penyedia pembayaran. Alur tagihan, biaya layanan, status pesanan, dan penambahan
+kuota otomatis tetap berfungsi, tetapi tidak ada uang yang benar-benar ditarik.
+Dengan hitungan ketat, RF-28 belum tersambung ke gateway produksi, jadi hitungan
+amannya 39 RF (**97,5%**).
 
 | Kode | Fitur |
 |---|---|
@@ -63,18 +66,19 @@ hitungan amannya 34 RF (**85%**).
 | RF-25 | Peringatan wabah di sekitar |
 | RF-26 | Kuota gratis 3x scan |
 | RF-27 | Pembelian/penukaran token |
+| RF-28 | Payment gateway dan rincian biaya layanan (mode simulasi) |
 | RF-29 | Riwayat transaksi token |
+| RF-30 | Otomatisasi pembelian token dan pembaruan kuota |
 | RF-31 | Pengajuan konsultasi dokter |
 | RF-32 | Daftar dan pengambilan konsultasi |
 | RF-33 | Percakapan konsultasi |
 | RF-34 | Penutupan konsultasi |
+| RF-35 | Jadwal praktik dokter |
+| RF-36 | Riwayat jawaban dokter |
+| RF-37 | Rekap aktivitas dokter |
 | RF-38 | Dashboard ringkasan admin |
 | RF-39 | Verifikasi dokter dan kelola pengguna |
 | RF-40 | Monitoring laporan wabah di admin |
-
-Sisanya belum dikerjakan: payment gateway dan otomatisasi pembelian token
-(RF-28, RF-30), serta pendataan dokter lanjutan seperti jadwal praktik dan
-riwayat jawaban (RF-35 s.d. RF-37).
 
 ## Model AI
 
@@ -138,6 +142,10 @@ disimpan di riwayat supaya masih terlihat saat membuka hasil lama.
 | GET /api/sertifikat/:kode | Verifikasi sertifikat (bisa diakses tanpa login) |
 | POST /api/dokter/daftar | Ajukan akun dokter beserta berkas STR |
 | GET /api/dokter/status | Status pengajuan akun dokter |
+| GET /api/dokter/tersedia | Daftar dokter terverifikasi dan jadwal praktiknya |
+| PUT /api/dokter/jadwal | Atur hari dan jam praktik dokter |
+| GET /api/dokter/riwayat | Riwayat konsultasi yang sudah dijawab dokter |
+| GET /api/dokter/aktivitas | Rekap aktivitas dan pesan dokter |
 | GET /api/konsultasi | Daftar konsultasi sesuai peran |
 | POST /api/konsultasi | Ajukan konsultasi baru |
 | GET /api/konsultasi/:id | Rincian percakapan konsultasi |
@@ -150,9 +158,13 @@ disimpan di riwayat supaya masih terlihat saat membuka hasil lama.
 | GET /api/admin/dokter/:id/berkas | Buka berkas STR (khusus admin) |
 | POST /api/admin/dokter/:id/verifikasi | Terima atau tolak pengajuan dokter |
 | GET /api/admin/laporan | Laporan wabah terbaru untuk admin |
-| GET /api/token/paket | Daftar paket token |
+| GET /api/token/paket | Daftar paket token dan biaya layanan |
 | POST /api/token/tukar | Tukar kode token menjadi kuota |
-| GET /api/token/transaksi | Riwayat penukaran token |
+| GET /api/token/transaksi | Riwayat penukaran dan pembelian token |
+| GET /api/pembayaran | Daftar pesanan token milik pengguna |
+| POST /api/pembayaran | Buat pesanan paket token |
+| GET /api/pembayaran/:kode | Rincian satu pesanan |
+| POST /api/pembayaran/:kode/bayar | Konfirmasi pembayaran simulasi dan tambah kuota |
 | GET /health (Flask) | Status layanan AI, model aktif, dan status Gemini |
 | POST /predict (Flask) | Analisis foto: penyakit dan tingkat keyakinan |
 
@@ -170,9 +182,9 @@ demo di aplikasi. Ganti kata sandinya sebelum dipakai di luar pengujian lokal.
 
 | Peran | Menu yang tampil |
 |---|---|
-| Peternak | Scan, riwayat, sertifikat, peta wabah, lapor wabah, konsultasi, token |
-| Dokter | Permintaan konsultasi dan profil/status STR |
-| Admin | Dashboard, peta sebaran, pemeriksaan terbaru, verifikasi dokter, pengguna |
+| Peternak | Scan, riwayat, sertifikat, peta wabah, lapor wabah, konsultasi, beli/tukar token |
+| Dokter | Permintaan konsultasi, jadwal praktik, riwayat jawaban, rekap aktivitas, profil/status STR |
+| Admin | Dashboard, peta sebaran, pemeriksaan terbaru, verifikasi dokter, rekap dokter, pengguna |
 
 Menu mengikuti hak akses tiap peran. Endpoint backend tetap memeriksa peran, jadi
 halaman yang tidak tampil juga tidak bisa dipakai untuk mengubah data peran lain.
@@ -186,8 +198,8 @@ halaman yang tidak tampil juga tidak bisa dipakai untuk mengubah data peran lain
 - Kata sandi disimpan dalam bentuk hash, bukan teks terbaca.
 - Sesi browser memakai cookie **httpOnly + SameSite=Lax**, bukan localStorage.
   Logout mencabut token di server, dan halaman yang butuh sesi (beranda, scan,
-  hasil, riwayat, profil, lapor, token, peta, konsultasi, admin) diarahkan ke
-  login bila belum punya sesi.
+  hasil, riwayat, profil, lapor, token, pembayaran, peta, konsultasi, admin)
+  diarahkan ke login bila belum punya sesi.
 - Rahasia JWT dibuat otomatis di `backend/data/.jwt-secret` (tidak ikut repo).
 - Registrasi dan login dibatasi 10 percobaan per 10 menit per IP.
 - Foto yang diunggah tidak ditulis ke disk, hanya diproses di memori.
@@ -220,9 +232,17 @@ halaman yang tidak tampil juga tidak bisa dipakai untuk mengubah data peran lain
   disediakan untuk mencoba alur ini; ini bukan layanan telemedicine sungguhan.
 - Dashboard admin membaca data nyata dari basis data: jumlah pengguna, scan,
   laporan, konsultasi, token terjual, pengajuan dokter, dan laporan terbaru.
-- Token scan ditukar memakai kode dari agen. Kode demo `LHS-DEMO-3` dan
-  `LHS-DEMO-10` dicetak di konsol backend saat pertama kali dijalankan.
-  Payment gateway (RF-28) belum dikerjakan, jadi belum ada pembayaran daring.
+- Token scan bisa didapat dengan menukar kode dari agen atau membeli paket
+  langsung di halaman token. Kode demo `LHS-DEMO-3` dan `LHS-DEMO-10` dicetak di
+  konsol backend saat pertama kali dijalankan.
+- Pembelian token memakai **gateway simulasi**. Halaman pembayaran menampilkan
+  harga paket, biaya layanan, total, metode, dan status pesanan. Tombol konfirmasi
+  meniru callback gateway; setelah itu kuota ditambahkan otomatis dan transaksi
+  tercatat. Tidak ada uang yang ditarik dan tidak ada data kartu yang diminta.
+- Dokter bisa mengatur hari dan jam praktik di halaman profil. Jadwal tampil di
+  daftar dokter pada halaman konsultasi dan di percakapan yang sudah diambil.
+- Konsultasi yang sudah ditutup masuk ke riwayat jawaban dokter. Rekap aktivitas
+  (selesai, berjalan, pesan terkirim) tampil di profil dokter dan dashboard admin.
 
 ## Tautan
 

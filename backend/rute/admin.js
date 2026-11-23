@@ -48,6 +48,7 @@ module.exports = (app, { auth, authPeran, bodyJson }) => {
         tiga_puluh_hari: hitung(`SELECT COUNT(*) AS n FROM laporan_wabah WHERE created_at >= datetime('now', '-30 days')`),
       },
       token_terjual: hitung('SELECT COALESCE(SUM(jumlah_scan), 0) AS n FROM transaksi'),
+      pendapatan: hitung(`SELECT COALESCE(SUM(total), 0) AS n FROM pesanan WHERE status = 'dibayar'`),
       konsultasi: {
         menunggu: hitung(`SELECT COUNT(*) AS n FROM konsultasi WHERE status = 'menunggu'`),
         aktif: hitung(`SELECT COUNT(*) AS n FROM konsultasi WHERE status = 'aktif'`),
@@ -96,7 +97,10 @@ module.exports = (app, { auth, authPeran, bodyJson }) => {
 
     const baris = db
       .prepare(
-        `SELECT d.*, u.nama, u.email
+        `SELECT d.*, u.nama, u.email,
+                (SELECT COUNT(*) FROM konsultasi k WHERE k.dokter_id = d.user_id AND k.status = 'selesai') AS selesai,
+                (SELECT COUNT(*) FROM konsultasi k WHERE k.dokter_id = d.user_id AND k.status = 'aktif') AS aktif,
+                (SELECT COUNT(*) FROM pesan_konsultasi p WHERE p.pengirim_id = d.user_id) AS pesan
          FROM dokter d JOIN users u ON u.id = d.user_id
          WHERE (? IS NULL OR d.status = ?)
          ORDER BY CASE d.status WHEN 'menunggu' THEN 0 ELSE 1 END, d.user_id DESC`
@@ -113,6 +117,14 @@ module.exports = (app, { auth, authPeran, bodyJson }) => {
         status: b.status,
         catatan: b.catatan || '',
         ada_berkas: Boolean(b.berkas),
+        jadwal_hari: b.jadwal_hari || '',
+        jadwal_jam: b.jadwal_jam || '',
+        jadwal: b.jadwal_hari
+          ? `${b.jadwal_hari}, ${b.jadwal_jam || ''}`.replace(/, $/, '')
+          : '',
+        selesai: Number(b.selesai),
+        aktif: Number(b.aktif),
+        pesan: Number(b.pesan),
         dibuat: b.dibuat,
         diputuskan: b.diputuskan,
       })),

@@ -32,12 +32,14 @@ const HALAMAN_TERLINDUNGI = new Set([
   '/peta.html',
   '/konsultasi.html',
   '/admin.html',
+  '/bayar.html',
 ]);
 const PAKET_TOKEN = [
   { kode: 'hemat-3', nama: 'Paket Hemat', jumlah: 3, harga: 15000 },
   { kode: 'ternak-10', nama: 'Paket Ternak', jumlah: 10, harga: 45000 },
   { kode: 'kandang-30', nama: 'Paket Kandang', jumlah: 30, harga: 120000 },
 ];
+const BIAYA_LAYANAN = 2500;
 
 function muatJwtSecret() {
   if (process.env.JWT_SECRET) {
@@ -213,7 +215,7 @@ function dataPengguna(id) {
   if (!user) return null;
   const total = db.prepare('SELECT COUNT(*) AS n FROM riwayat WHERE user_id = ?').get(id).n;
   const dokter = db
-    .prepare('SELECT nomor_str, wilayah, status, catatan FROM dokter WHERE user_id = ?')
+    .prepare('SELECT nomor_str, wilayah, status, catatan, jadwal_hari, jadwal_jam FROM dokter WHERE user_id = ?')
     .get(id);
   return {
     id: Number(user.id),
@@ -226,6 +228,11 @@ function dataPengguna(id) {
           wilayah: dokter.wilayah || '',
           status: dokter.status,
           catatan: dokter.catatan || '',
+          jadwal_hari: dokter.jadwal_hari || '',
+          jadwal_jam: dokter.jadwal_jam || '',
+          jadwal: dokter.jadwal_hari
+            ? `${dokter.jadwal_hari}, ${dokter.jadwal_jam || ''}`.replace(/, $/, '')
+            : '',
         }
       : null,
     sisa_scan: Number(user.sisa_scan),
@@ -466,7 +473,7 @@ app.post('/api/laporan', auth, (req, res) => {
 });
 
 app.get('/api/token/paket', auth, (_req, res) => {
-  res.json({ paket: PAKET_TOKEN });
+  res.json({ paket: PAKET_TOKEN, biaya_layanan: BIAYA_LAYANAN });
 });
 
 app.get('/api/token/transaksi', auth, (req, res) => {
@@ -634,8 +641,9 @@ app.post('/api/scan', auth, unggah.single('gambar'), async (req, res) => {
 
 require('./rute/sertifikat')(app, { auth });
 require('./rute/peta')(app, { auth });
-require('./rute/dokter')(app, { auth, bodyJson });
+require('./rute/dokter')(app, { auth, authPeran, bodyJson });
 require('./rute/konsultasi')(app, { auth, bodyJson });
+require('./rute/pembayaran')(app, { auth, bodyJson, paket: PAKET_TOKEN, biayaLayanan: BIAYA_LAYANAN });
 require('./rute/admin')(app, { auth, authPeran, bodyJson });
 
 app.use((err, _req, res, _next) => {

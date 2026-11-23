@@ -60,6 +60,7 @@
 
       <div class="bagian"><span class="label-kecil" id="label-bagian-dokter">Akun dokter hewan</span></div>
       <div id="kartu-dokter"></div>
+      <div id="kartu-dokter-tambahan"></div>
 
       <div id="bagian-ringkasan">
         <div class="bagian"><span class="label-kecil">Ringkasan</span></div>
@@ -153,9 +154,61 @@
       </form>`;
     }
 
+    function barisAktivitas(angka, judul, meta) {
+      return `<div class="baris">
+        <span class="baris-utama">
+          <span class="baris-judul">${esc(judul)}</span>
+          <span class="baris-meta">${esc(meta)}</span>
+        </span>
+        <span class="pil hijau">${Number(angka)}</span>
+      </div>`;
+    }
+
+    function barisRiwayat(k) {
+      return `<a class="baris" href="konsultasi.html?id=${Number(k.id)}">
+        <span class="baris-utama">
+          <span class="baris-judul">${esc(k.topik)}</span>
+          <span class="baris-meta">${esc(k.nama_peternak)} · ${Number(k.jumlah_pesan)} pesan · ${esc(formatTanggal(k.selesai))}</span>
+        </span>
+        <span class="pil abu">selesai</span>
+        <span class="chevron" data-ikon="chevron"></span>
+      </a>`;
+    }
+
+    async function muatDataDokter() {
+      const wadah = el('kartu-dokter-tambahan');
+      if (!wadah) return;
+      try {
+        const [a, r] = await Promise.all([
+          api('/api/dokter/aktivitas'),
+          api('/api/dokter/riwayat'),
+        ]);
+        const akt = a.aktivitas;
+        wadah.innerHTML = `
+          <div class="bagian"><span class="label-kecil">Aktivitas dokter</span></div>
+          <div class="grup">
+            ${barisAktivitas(akt.selesai, 'Konsultasi selesai', 'Percakapan yang sudah ditutup')}
+            ${barisAktivitas(akt.aktif, 'Sedang berjalan', 'Percakapan yang Anda tangani')}
+            ${barisAktivitas(akt.pesan, 'Pesan terkirim', `Aktivitas terakhir ${akt.terakhir ? formatTanggal(akt.terakhir) : '-'}`)}
+          </div>
+          <div class="bagian"><span class="label-kecil">Riwayat jawaban</span></div>
+          ${r.riwayat.length
+            ? `<div class="grup">${r.riwayat.slice(0, 5).map(barisRiwayat).join('')}</div>`
+            : `<div class="kosong">
+                 <span class="lingkaran" data-ikon="dokter"></span>
+                 <p>Belum ada konsultasi yang selesai.</p>
+               </div>`}`;
+        pasangIkon();
+      } catch (err) {
+        wadah.innerHTML = `<p class="pesan error">${esc(err.message)}</p>`;
+      }
+    }
+
     function renderDokter(me) {
       const wadah = el('kartu-dokter');
+      const tambahan = el('kartu-dokter-tambahan');
       if (!wadah) return;
+      if (tambahan) tambahan.innerHTML = '';
 
       if (me.peran === 'admin') {
         wadah.innerHTML = `<div class="kartu"><p class="sedang">Akun admin tidak memerlukan pendaftaran dokter. Verifikasi pengajuan dokter dilakukan di <a class="tautan-kecil" href="admin.html">dashboard admin</a>.</p></div>`;
@@ -163,6 +216,11 @@
       }
 
       if (me.peran === 'dokter') {
+        const jadwal = me.dokter?.jadwal
+          || (me.dokter?.jadwal_hari
+            ? `${me.dokter.jadwal_hari}, ${me.dokter.jadwal_jam || ''}`.replace(/, $/, '')
+            : '');
+
         wadah.innerHTML = `<div class="grup">
           <div class="baris">
             <span class="baris-utama">
@@ -171,6 +229,12 @@
             </span>
             <span class="pil hijau">dokter</span>
           </div>
+          <div class="baris">
+            <span class="baris-utama">
+              <span class="baris-judul">Jadwal praktik</span>
+              <span class="baris-meta">${jadwal ? esc(jadwal) : 'Belum diatur'}</span>
+            </span>
+          </div>
           <a class="baris" href="konsultasi.html">
             <span class="baris-utama">
               <span class="baris-judul">Buka konsultasi masuk</span>
@@ -178,7 +242,38 @@
             </span>
             <span class="chevron" data-ikon="chevron"></span>
           </a>
-        </div>`;
+        </div>
+        <form class="kartu" id="form-jadwal" style="margin-top:12px">
+          <div class="medan">
+            <label for="jadwal-hari">Hari praktik</label>
+            <input id="jadwal-hari" type="text" maxlength="40" placeholder="Contoh: Senin-Jumat" value="${esc(me.dokter?.jadwal_hari || '')}" />
+          </div>
+          <div class="medan">
+            <label for="jadwal-jam">Jam praktik</label>
+            <input id="jadwal-jam" type="text" maxlength="40" placeholder="Contoh: 08.00-16.00" value="${esc(me.dokter?.jadwal_jam || '')}" />
+          </div>
+          <p class="pesan" id="pesan-jadwal" role="alert"></p>
+          <button class="tombol" type="submit">Simpan jadwal</button>
+        </form>`;
+
+        el('form-jadwal').addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const tombol = ev.target.querySelector('button[type="submit"]');
+          tombol.disabled = true;
+          try {
+            const hasil = await api('/api/dokter/jadwal', {
+              method: 'PUT',
+              body: { hari: el('jadwal-hari').value.trim(), jam: el('jadwal-jam').value.trim() },
+            });
+            toast(hasil.pesan);
+            isi(await api('/api/me'));
+          } catch (err) {
+            setPesan('pesan-jadwal', err.message);
+            tombol.disabled = false;
+          }
+        });
+
+        muatDataDokter();
         pasangIkon();
         return;
       }

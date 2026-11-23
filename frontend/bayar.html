@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pembayaran - LivestockHealth Scan</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="bilah-atas">
+      <span class="logo" data-logo></span>
+      <span class="kunci-bilah">
+        <span class="nama-merek">Pembayaran</span>
+        <span class="sub">Gateway simulasi</span>
+      </span>
+      <span class="spacer"></span>
+      <a class="tombol mini polos" href="token.html">Token</a>
+    </header>
+
+    <main class="konten" id="konten">
+      <div class="memuat">
+        <div class="spinner"></div>
+        <p class="sedang teks-redup">Memuat pesanan…</p>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+  <script>
+    pasangLogo();
+
+    const kodePesanan = new URLSearchParams(location.search).get('kode') || '';
+
+    function pilStatus(status) {
+      return status === 'dibayar'
+        ? '<span class="pil hijau">dibayar</span>'
+        : '<span class="pil kuning">menunggu</span>';
+    }
+
+    function rincian(p) {
+      return `<div class="kartu">
+        <div class="baris-antara" style="padding:6px 0">
+          <span class="teks-redup kecil">Kode pesanan</span>
+          <span class="sedang" style="font-weight:600">${esc(p.kode)}</span>
+        </div>
+        <div class="baris-antara" style="padding:6px 0">
+          <span class="teks-redup kecil">Paket</span>
+          <span class="sedang">${esc(p.nama_paket)} · ${Number(p.jumlah_scan)} scan</span>
+        </div>
+        <div class="baris-antara" style="padding:6px 0">
+          <span class="teks-redup kecil">Harga paket</span>
+          <span class="sedang">${rupiah(p.harga)}</span>
+        </div>
+        <div class="baris-antara" style="padding:6px 0">
+          <span class="teks-redup kecil">Biaya layanan</span>
+          <span class="sedang">${rupiah(p.biaya_layanan)}</span>
+        </div>
+        <div class="baris-antara" style="padding:8px 0;border-top:1px solid var(--garis)">
+          <span class="sedang" style="font-weight:700">Total</span>
+          <span class="sedang" style="font-weight:700">${rupiah(p.total)}</span>
+        </div>
+        <div class="baris-antara" style="padding:6px 0">
+          <span class="teks-redup kecil">Metode</span>
+          <span class="sedang">${esc(p.metode_label)}</span>
+        </div>
+        <div class="baris-antara" style="padding:6px 0">
+          <span class="teks-redup kecil">Status</span>
+          ${pilStatus(p.status)}
+        </div>
+      </div>`;
+    }
+
+    function tampilkan(p) {
+      if (p.status === 'dibayar') {
+        el('konten').innerHTML = `
+          <h2 class="judul">Pembayaran diterima</h2>
+          <p class="subjudul" style="margin-bottom:16px">Kuota scan sudah ditambahkan otomatis ke akun Anda.</p>
+          ${rincian(p)}
+          <div class="catatan aman" style="margin-top:16px">
+            <span>Pesanan ${esc(p.kode)} sudah dibayar pada ${esc(formatTanggal(p.dibayar_at))}. Tidak perlu menukar kode lagi.</span>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:16px">
+            <a class="tombol" href="token.html">Lihat riwayat</a>
+            <a class="tombol polos" href="scan.html">Mulai scan</a>
+          </div>`;
+        pasangIkon();
+        return;
+      }
+
+      el('konten').innerHTML = `
+        <h2 class="judul">Selesaikan pembayaran</h2>
+        <p class="subjudul" style="margin-bottom:16px">Periksa rincian biaya sebelum membayar.</p>
+        ${rincian(p)}
+        <div class="catatan hati" style="margin-top:16px">
+          <span>Mode simulasi. Tombol di bawah meniru konfirmasi dari penyedia payment gateway; tidak ada uang yang benar-benar ditarik. Di produksi, konfirmasi dikirim oleh gateway, bukan dari halaman ini.</span>
+        </div>
+        <p class="pesan" id="pesan" role="alert"></p>
+        <button class="tombol" id="bayar" type="button" style="margin-top:16px">Simulasikan pembayaran berhasil</button>`;
+
+      el('bayar').addEventListener('click', async () => {
+        el('bayar').disabled = true;
+        try {
+          const hasil = await api('/api/pembayaran/' + encodeURIComponent(p.kode) + '/bayar', { method: 'POST' });
+          toast(hasil.pesan);
+          await muat();
+        } catch (err) {
+          setPesan('pesan', err.message);
+          el('bayar').disabled = false;
+        }
+      });
+      pasangIkon();
+    }
+
+    async function muat() {
+      try {
+        const { pesanan } = await api('/api/pembayaran/' + encodeURIComponent(kodePesanan));
+        tampilkan(pesanan);
+      } catch (err) {
+        el('konten').innerHTML = `<div class="kosong">
+          <span class="lingkaran" data-ikon="peringatan"></span>
+          <p>${esc(err.message)}</p>
+          <a class="tombol mini" href="token.html">Kembali ke token</a>
+        </div>`;
+        pasangIkon();
+      }
+    }
+
+    (async () => {
+      const me = await butuhLogin();
+      if (!me) return;
+      if (!kodePesanan) {
+        location.replace('token.html');
+        return;
+      }
+      await muat();
+    })();
+  </script>
+</body>
+</html>
