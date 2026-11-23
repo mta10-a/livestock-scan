@@ -12,7 +12,7 @@
       <span class="logo" data-logo></span>
       <span class="kunci-bilah">
         <span class="nama-merek">Pembayaran</span>
-        <span class="sub">Gateway simulasi</span>
+        <span class="sub" id="sub-gateway">Memeriksa gateway…</span>
       </span>
       <span class="spacer"></span>
       <a class="tombol mini polos" href="token.html">Token</a>
@@ -30,12 +30,15 @@
   <script>
     pasangLogo();
 
-    const kodePesanan = new URLSearchParams(location.search).get('kode') || '';
+    const parameter = new URLSearchParams(location.search);
+    const kodePesanan = parameter.get('kode') || parameter.get('order_id') || '';
+    const dariMidtrans = parameter.has('transaction_status');
+    let konfGateway = { gateway: 'simulasi', mode: 'simulasi', client_key: '' };
 
     function pilStatus(status) {
-      return status === 'dibayar'
-        ? '<span class="pil hijau">dibayar</span>'
-        : '<span class="pil kuning">menunggu</span>';
+      if (status === 'dibayar') return '<span class="pil hijau">dibayar</span>';
+      if (status === 'batal') return '<span class="pil merah">batal</span>';
+      return '<span class="pil kuning">menunggu</span>';
     }
 
     function rincian(p) {
@@ -61,6 +64,10 @@
           <span class="sedang" style="font-weight:700">${rupiah(p.total)}</span>
         </div>
         <div class="baris-antara" style="padding:6px 0">
+          <span class="teks-redup kecil">Gateway</span>
+          <span class="sedang">${p.gateway === 'midtrans' ? 'Midtrans' : 'Simulasi'}</span>
+        </div>
+        <div class="baris-antara" style="padding:6px 0">
           <span class="teks-redup kecil">Metode</span>
           <span class="sedang">${esc(p.metode_label)}</span>
         </div>
@@ -69,6 +76,115 @@
           ${pilStatus(p.status)}
         </div>
       </div>`;
+    }
+
+    async function cekStatus(diam) {
+      const tombol = el('cek');
+      if (tombol) tombol.disabled = true;
+      try {
+        const hasil = await api('/api/pembayaran/' + encodeURIComponent(kodePesanan) + '/cek', { method: 'POST' });
+        if (hasil.pesanan?.status === 'dibayar') {
+          toast('Pembayaran diterima. Kuota bertambah.');
+          tampilkan(hasil.pesanan);
+          return;
+        }
+        if (hasil.pesanan?.status === 'batal') {
+          tampilkan(hasil.pesanan);
+          return;
+        }
+        if (!diam) setPesan('pesan', hasil.pesan || 'Pembayaran belum diterima.');
+      } catch (err) {
+        if (!diam) setPesan('pesan', err.message);
+      } finally {
+        if (el('cek')) el('cek').disabled = false;
+      }
+    }
+
+    function muatSnap() {
+      return new Promise((resolve, reject) => {
+        if (window.snap) return resolve();
+        if (!konfGateway.client_key) {
+          return reject(new Error('Client Key Midtrans belum diisi.'));
+        }
+
+        const alamat = konfGateway.mode === 'production'
+          ? 'https://app.midtrans.com/snap/snap.js'
+          : 'https://app.sandbox.midtrans.com/snap/snap.js';
+        const skrip = document.createElement('script');
+        skrip.src = alamat;
+        skrip.setAttribute('data-client-key', konfGateway.client_key);
+        skrip.onload = () => (window.snap ? resolve() : reject(new Error('Midtrans Snap tidak tersedia.')));
+        skrip.onerror = () => reject(new Error('Gagal memuat Midtrans Snap.'));
+        document.head.appendChild(skrip);
+      });
+    }
+
+    async function bukaSnap(p) {
+      const tombol = el('bayar-midtrans');
+      if (tombol) tombol.disabled = true;
+      setPesan('pesan', '');
+      let selesai = false;
+
+      try {
+        await muatSnap();
+        window.snap.pay(p.gateway_token, {
+          onSuccess: () => {
+            selesai = true;
+            toast('Pembayaran diterima.');
+            cekStatus(true);
+          },
+          onPending: () => {
+            toast('Pembayaran menunggu penyelesaian.');
+            cekStatus(false);
+          },
+          onError: () => {
+            setPesan('pesan', 'Pembayaran gagal diproses Midtrans.');
+            if (tombol) tombol.disabled = false;
+          },
+          onClose: () => {
+            if (selesai) return;
+            if (tombol) tombol.disabled = false;
+            setPesan('pesan', 'Jendela pembayaran ditutup. Buka lagi atau pakai tautan Midtrans.');
+          },
+        });
+      } catch (err) {
+        if (p.redirect_url) {
+          location.href = p.redirect_url;
+          return;
+        }
+        setPesan('pesan', err.message);
+        if (tombol) tombol.disabled = false;
+      }
+    }
+
+    function tampilkanMidtrans(p) {
+      const bisaSnap = Boolean(konfGateway.client_key && p.gateway_token);
+      const tombolSnap = bisaSnap
+        ? '<button class="tombol" id="bayar-midtrans" type="button">Bayar dengan Midtrans</button>'
+        : '';
+      const tautan = p.redirect_url
+        ? `<a class="${bisaSnap ? 'tombol polos' : 'tombol'}" href="${esc(p.redirect_url)}">Buka pembayaran Midtrans</a>`
+        : '';
+
+      el('konten').innerHTML = `
+        <h2 class="judul">Selesaikan pembayaran</h2>
+        <p class="subjudul" style="margin-bottom:16px">Kode QRIS atau nomor VA muncul di jendela pembayaran Midtrans.</p>
+        ${rincian(p)}
+        <div class="catatan netral" style="margin-top:16px">
+          <span>Klik bayar untuk membuka halaman Midtrans, pilih QRIS/VA/e-wallet, lalu selesaikan. Setelah itu kuota dicek otomatis.</span>
+        </div>
+        <p class="pesan" id="pesan" role="alert"></p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+          ${tombolSnap}
+          ${tautan}
+          <button class="tombol polos" id="cek" type="button">Cek status pembayaran</button>
+        </div>
+        <p class="kecil teks-redup" style="margin-top:10px">Pesanan berlaku 60 menit. ${konfGateway.mode === 'production' ? 'Pembayaran diproses oleh Midtrans.' : 'Di lingkungan Sandbox, pembayaran memakai alat uji Midtrans dan tidak memotong uang sungguhan.'}</p>`;
+
+      if (bisaSnap) el('bayar-midtrans').addEventListener('click', () => bukaSnap(p));
+      el('cek').addEventListener('click', () => cekStatus(false));
+      pasangIkon();
+      if (dariMidtrans) cekStatus(true);
     }
 
     function tampilkan(p) {
@@ -85,6 +201,24 @@
             <a class="tombol polos" href="scan.html">Mulai scan</a>
           </div>`;
         pasangIkon();
+        return;
+      }
+
+      if (p.status === 'batal') {
+        el('konten').innerHTML = `
+          <h2 class="judul">Pembayaran tidak selesai</h2>
+          <p class="subjudul" style="margin-bottom:16px">Pesanan ini dibatalkan atau kedaluwarsa.</p>
+          ${rincian(p)}
+          <div class="catatan bahaya" style="margin-top:16px">
+            <span>Kuota tidak bertambah. Silakan buat pesanan baru dari halaman token.</span>
+          </div>
+          <a class="tombol" href="token.html" style="margin-top:16px">Kembali ke token</a>`;
+        pasangIkon();
+        return;
+      }
+
+      if (p.gateway === 'midtrans') {
+        tampilkanMidtrans(p);
         return;
       }
 
@@ -114,7 +248,15 @@
 
     async function muat() {
       try {
-        const { pesanan } = await api('/api/pembayaran/' + encodeURIComponent(kodePesanan));
+        const [hasil, konf] = await Promise.all([
+          api('/api/pembayaran/' + encodeURIComponent(kodePesanan)),
+          api('/api/pembayaran/config').catch(() => konfGateway),
+        ]);
+        konfGateway = konf && konf.gateway ? konf : konfGateway;
+        const { pesanan } = hasil;
+        el('sub-gateway').textContent = pesanan.gateway === 'midtrans'
+          ? (konfGateway.mode === 'production' ? 'Midtrans' : 'Midtrans Sandbox')
+          : 'Gateway simulasi';
         tampilkan(pesanan);
       } catch (err) {
         el('konten').innerHTML = `<div class="kosong">

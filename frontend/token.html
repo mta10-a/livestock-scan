@@ -37,13 +37,15 @@
       <p class="kecil teks-redup" id="biaya-info" style="margin-bottom:10px">Memuat biaya layanan…</p>
       <div class="grup" id="paket"></div>
 
-      <div class="bagian"><span class="label-kecil">Metode pembayaran</span></div>
-      <div class="chip-baris" id="metode">
-        <button class="chip aktif" type="button" data-metode="qris">QRIS</button>
-        <button class="chip" type="button" data-metode="va">Transfer VA</button>
-        <button class="chip" type="button" data-metode="ewallet">E-wallet</button>
+      <div id="bagian-metode">
+        <div class="bagian"><span class="label-kecil">Metode pembayaran</span></div>
+        <div class="chip-baris" id="metode">
+          <button class="chip aktif" type="button" data-metode="qris">QRIS</button>
+          <button class="chip" type="button" data-metode="va">Transfer VA</button>
+          <button class="chip" type="button" data-metode="ewallet">E-wallet</button>
+        </div>
       </div>
-      <p class="kecil teks-redup" style="margin-bottom:16px">Pembayaran memakai gateway simulasi untuk prototype. Tidak ada uang yang benar-benar ditarik.</p>
+      <p class="kecil teks-redup" id="catatan-gateway" style="margin-bottom:16px">Memeriksa gateway pembayaran…</p>
 
       <div id="bagian-pesanan" style="display:none">
         <div class="bagian"><span class="label-kecil">Pesanan menunggu</span></div>
@@ -75,6 +77,7 @@
 
     let biayaLayanan = 0;
     let metodePilih = 'qris';
+    let gatewayAktif = false;
 
     function kartuPaket(p) {
       return `<div class="baris" style="flex-wrap:wrap">
@@ -116,7 +119,9 @@
           try {
             const { pesanan } = await api('/api/pembayaran', {
               method: 'POST',
-              body: { paket: tombol.dataset.beli, metode: metodePilih },
+              body: gatewayAktif
+                ? { paket: tombol.dataset.beli }
+                : { paket: tombol.dataset.beli, metode: metodePilih },
             });
             location.href = 'bayar.html?kode=' + encodeURIComponent(pesanan.kode);
           } catch (err) {
@@ -135,12 +140,19 @@
     });
 
     async function muat() {
-      const [me, paket, transaksi, pesanan] = await Promise.all([
+      const [me, paket, transaksi, pesanan, konf] = await Promise.all([
         api('/api/profil'),
         api('/api/token/paket'),
         api('/api/token/transaksi'),
         api('/api/pembayaran'),
+        api('/api/pembayaran/config').catch(() => ({ gateway: 'simulasi', mode: 'simulasi' })),
       ]);
+
+      gatewayAktif = konf.gateway === 'midtrans';
+      el('bagian-metode').style.display = gatewayAktif ? 'none' : '';
+      el('catatan-gateway').textContent = gatewayAktif
+        ? `Pembayaran diproses Midtrans ${konf.mode === 'production' ? 'Production' : 'Sandbox'}. Pilih QRIS, transfer VA, atau e-wallet di halaman pembayaran Midtrans.`
+        : 'Pembayaran memakai gateway simulasi untuk prototype. Tidak ada uang yang benar-benar ditarik.';
 
       el('sisa').textContent = me.sisa_scan ?? 0;
       el('total').textContent = me.total_scan ?? 0;

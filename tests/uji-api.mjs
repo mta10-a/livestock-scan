@@ -302,6 +302,14 @@ async function main() {
   cek('RF-27 daftar paket token -> 200', r.status === 200 && r.data.paket?.length >= 3, String(r.status));
   cek('RF-28 daftar paket memuat biaya layanan', r.data.biaya_layanan === 2500, String(r.data.biaya_layanan));
 
+  r = await kirim(B1, '/api/pembayaran/config', { token: tokenA });
+  const modeGateway = r.status === 200 ? r.data.gateway : 'simulasi';
+  cek(
+    'RF-28 status gateway pembayaran terbaca',
+    r.status === 200 && ['simulasi', 'midtrans'].includes(modeGateway),
+    JSON.stringify(r.data)
+  );
+
   r = await kirim(B1, '/api/token/tukar', { method: 'POST', token: tokenA, body: { kode: 'KODE-PALSU' } });
   cek('RF-27 kode token tidak dikenal -> 404', r.status === 404, String(r.status));
 
@@ -317,40 +325,47 @@ async function main() {
   r = await kirim(B1, '/api/pembayaran', { method: 'POST', token: tokenA, body: { paket: 'tidak-ada', metode: 'qris' } });
   cek('RF-28 paket pembayaran tidak dikenal -> 400', r.status === 400, String(r.status));
 
-  r = await kirim(B1, '/api/pembayaran', { method: 'POST', token: tokenA, body: { paket: 'hemat-3', metode: 'tunai' } });
-  cek('RF-28 metode pembayaran tidak dikenal -> 400', r.status === 400, String(r.status));
+  let pesanan = null;
 
-  r = await kirim(B1, '/api/pembayaran', { method: 'POST', token: tokenA, body: { paket: 'hemat-3', metode: 'qris' } });
-  const pesanan = r.data.pesanan;
-  cek(
-    'RF-28 pesanan dibuat dengan biaya layanan',
-    r.status === 201 && pesanan?.total === 17500 && pesanan?.biaya_layanan === 2500,
-    JSON.stringify(r.data).slice(0, 160)
-  );
-  cek('RF-28 pesanan memuat metode pembayaran', pesanan?.metode_label === 'QRIS', String(pesanan?.metode_label));
+  if (modeGateway === 'simulasi') {
+    r = await kirim(B1, '/api/pembayaran', { method: 'POST', token: tokenA, body: { paket: 'hemat-3', metode: 'tunai' } });
+    cek('RF-28 metode pembayaran tidak dikenal -> 400', r.status === 400, String(r.status));
 
-  r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}`, {});
-  cek('RF-28 pesanan tanpa login -> 401', r.status === 401, String(r.status));
+    r = await kirim(B1, '/api/pembayaran', { method: 'POST', token: tokenA, body: { paket: 'hemat-3', metode: 'qris' } });
+    pesanan = r.data.pesanan;
+    cek(
+      'RF-28 pesanan dibuat dengan biaya layanan',
+      r.status === 201 && pesanan?.total === 17500 && pesanan?.biaya_layanan === 2500,
+      JSON.stringify(r.data).slice(0, 160)
+    );
+    cek('RF-28 pesanan memakai gateway simulasi', pesanan?.gateway === 'simulasi', String(pesanan?.gateway));
+    cek('RF-28 pesanan memuat metode pembayaran', pesanan?.metode_label === 'QRIS', String(pesanan?.metode_label));
 
-  r = await kirim(B1, '/api/me', { token: tokenA });
-  const kuotaSebelumBayar = r.data.sisa_scan;
+    r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}`, {});
+    cek('RF-28 pesanan tanpa login -> 401', r.status === 401, String(r.status));
 
-  r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}/bayar`, { method: 'POST', token: tokenA });
-  cek(
-    'RF-30 pembayaran menambah kuota otomatis',
-    r.status === 200 && r.data.pesanan?.status === 'dibayar' && r.data.sisa_scan === kuotaSebelumBayar + 3,
-    JSON.stringify(r.data).slice(0, 160)
-  );
+    r = await kirim(B1, '/api/me', { token: tokenA });
+    const kuotaSebelumBayar = r.data.sisa_scan;
 
-  r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}/bayar`, { method: 'POST', token: tokenA });
-  cek('RF-30 pembayaran ganda ditolak -> 409', r.status === 409, String(r.status));
+    r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}/bayar`, { method: 'POST', token: tokenA });
+    cek(
+      'RF-30 pembayaran menambah kuota otomatis',
+      r.status === 200 && r.data.pesanan?.status === 'dibayar' && r.data.sisa_scan === kuotaSebelumBayar + 3,
+      JSON.stringify(r.data).slice(0, 160)
+    );
 
-  r = await kirim(B1, '/api/token/transaksi', { token: tokenA });
-  cek(
-    'RF-30 transaksi pembelian tercatat',
-    r.status === 200 && r.data.transaksi?.some((t) => t.kode === pesanan?.kode),
-    JSON.stringify(r.data).slice(0, 160)
-  );
+    r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}/bayar`, { method: 'POST', token: tokenA });
+    cek('RF-30 pembayaran ganda ditolak -> 409', r.status === 409, String(r.status));
+
+    r = await kirim(B1, '/api/token/transaksi', { token: tokenA });
+    cek(
+      'RF-30 transaksi pembelian tercatat',
+      r.status === 200 && r.data.transaksi?.some((t) => t.kode === pesanan?.kode),
+      JSON.stringify(r.data).slice(0, 160)
+    );
+  } else {
+    catatan.push('  LEWAT uji pembayaran simulasi (gateway Midtrans aktif)');
+  }
 
   r = await kirim(B1, '/api/token/tukar', { method: 'POST', body: { kode: 'LHS-DEMO-3' } });
   cek('RF-27 tukar token tanpa login -> 401', r.status === 401, String(r.status));
@@ -358,7 +373,7 @@ async function main() {
   const emailB = emailUnik();
   const rb = await kirim(B1, '/api/register', { method: 'POST', body: { nama: 'Siti Ternak', email: emailB, password: 'rahasia123' } });
   const tokenB = rb.data.token;
-  r = await kirim(B1, `/api/pembayaran/${pesanan?.kode}`, { token: tokenB });
+  r = await kirim(B1, `/api/pembayaran/${pesanan?.kode || 'INV-PALSU'}`, { token: tokenB });
   cek('RF-28 pesanan bukan milik pengguna -> 404', r.status === 404, String(r.status));
   r = await kirim(B1, '/api/riwayat', { token: tokenB });
   cek('RF-18 pengguna lain tidak melihat riwayat orang lain', r.data.riwayat?.length === 0, String(r.data.riwayat?.length));
@@ -449,7 +464,11 @@ async function main() {
 
   r = await kirim(B1, '/api/admin/ringkasan', { token: tokenAdmin });
   cek('RF-38 ringkasan admin berisi data nyata', r.status === 200 && r.data.pengguna?.total >= 3 && r.data.scan?.total >= 3, JSON.stringify(r.data).slice(0, 160));
-  cek('RF-30 ringkasan admin memuat pendapatan', Number(r.data.pendapatan) >= 17500, String(r.data.pendapatan));
+  cek(
+    'RF-30 ringkasan admin memuat pendapatan',
+    modeGateway === 'simulasi' ? Number(r.data.pendapatan) >= 17500 : Number(r.data.pendapatan) >= 0,
+    String(r.data.pendapatan)
+  );
   cek('RF-38 ringkasan memuat pemeriksaan terbaru', Array.isArray(r.data.terbaru) && r.data.terbaru.length >= 3, JSON.stringify(r.data.terbaru || []).slice(0, 160));
 
   r = await kirim(B1, '/api/admin/ringkasan', { token: tokenA });

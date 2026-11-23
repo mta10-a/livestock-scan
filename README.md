@@ -30,12 +30,13 @@ aplikasinya di browser. Nomor port dan batas pemakaian diatur di `config.py`.
 
 ## Progres fitur
 
-Terpakai **40 dari 40** kebutuhan fungsional (100%). Satu catatan jujur: RF-28
-(payment gateway) berjalan dalam **mode simulasi** karena tidak ada kredensial
-penyedia pembayaran. Alur tagihan, biaya layanan, status pesanan, dan penambahan
-kuota otomatis tetap berfungsi, tetapi tidak ada uang yang benar-benar ditarik.
-Dengan hitungan ketat, RF-28 belum tersambung ke gateway produksi, jadi hitungan
-amannya 39 RF (**97,5%**).
+Terpakai **40 dari 40** kebutuhan fungsional (100%). RF-28 sudah memakai
+integrasi **Midtrans Snap** untuk QRIS, transfer VA, dan e-wallet. Selama Server
+Key Midtrans belum diisi, aplikasi otomatis memakai mode simulasi agar alur tetap
+bisa dicoba tanpa kredensial. Setelah key dimasukkan, halaman pembayaran
+mengarah ke Midtrans Sandbox dan kuota bertambah setelah status pembayaran
+diverifikasi. Hitungan ketat tetap 39 RF (**97,5%**) sampai key Midtrans aktif
+dan transaksi sandbox benar-benar dicoba.
 
 | Kode | Fitur |
 |---|---|
@@ -66,7 +67,7 @@ amannya 39 RF (**97,5%**).
 | RF-25 | Peringatan wabah di sekitar |
 | RF-26 | Kuota gratis 3x scan |
 | RF-27 | Pembelian/penukaran token |
-| RF-28 | Payment gateway dan rincian biaya layanan (mode simulasi) |
+| RF-28 | Payment gateway Midtrans (QRIS/VA/e-wallet) dan rincian biaya layanan |
 | RF-29 | Riwayat transaksi token |
 | RF-30 | Otomatisasi pembelian token dan pembaruan kuota |
 | RF-31 | Pengajuan konsultasi dokter |
@@ -120,6 +121,44 @@ Kalau kunci belum diisi, kuota Gemini habis, atau internet mati, aplikasi tetap
 berjalan normal dengan model latihan saja tanpa pesan error. Hasil Gemini ikut
 disimpan di riwayat supaya masih terlihat saat membuka hasil lama.
 
+### Pembayaran dengan Midtrans (opsional)
+
+Pembelian token memakai Midtrans Snap. QRIS, nomor VA, dan e-wallet ditampilkan
+di halaman pembayaran Midtrans. Kuota baru ditambahkan setelah backend mengecek
+status transaksi ke Midtrans atau menerima notifikasi bertanda tangan yang valid.
+
+Cara mengaktifkan:
+
+1. Daftar akun di `https://dashboard.midtrans.com/register` (gratis untuk
+   Sandbox). Lengkapi data toko dengan nama aplikasi, lalu pilih lingkungan
+   **Sandbox**.
+2. Buka **Settings → Access Keys**, salin **Server Key** dan **Client Key**.
+3. Buat berkas `backend/data/.midtrans` berisi:
+
+   ```
+   MIDTRANS_SERVER_KEY=SB-Mid-server-...
+   MIDTRANS_CLIENT_KEY=SB-Mid-client-...
+   MIDTRANS_MODE=sandbox
+   ```
+
+4. Jalankan ulang `python main.py`. Di halaman token, catatan gateway berubah
+   menjadi Midtrans Sandbox dan tombol beli membuka jendela pembayaran Midtrans.
+   Jika hanya Server Key yang diisi, pembayaran dibuka lewat tautan Midtrans.
+
+Kredensial tidak boleh di-commit; folder `backend/data/` sudah diabaikan Git.
+Lingkungan Sandbox memakai alat uji Midtrans, jadi tidak ada uang sungguhan yang
+dipotong. Untuk uang nyata, akun harus disetujui Midtrans, key produksi dipakai,
+dan `MIDTRANS_MODE` diubah menjadi `production`.
+
+Notifikasi pembayaran (webhook) bisa diarahkan ke
+`<alamat-publik>/api/pembayaran/midtrans/notifikasi`. Untuk pengembangan lokal,
+halaman pembayaran menyediakan tombol **Cek status pembayaran** sehingga tidak
+wajib memakai terowongan publik. Isi `BASE_URL` bila alamat publik aplikasi
+berbeda dari alamat lokal, misalnya saat memakai ngrok.
+
+Kalau key belum ada atau `PAYMENT_MODE=simulasi` dipasang, aplikasi memakai
+gateway simulasi dan menandainya jelas di halaman pembayaran.
+
 ## Endpoint
 
 | Endpoint | Fungsi |
@@ -162,9 +201,12 @@ disimpan di riwayat supaya masih terlihat saat membuka hasil lama.
 | POST /api/token/tukar | Tukar kode token menjadi kuota |
 | GET /api/token/transaksi | Riwayat penukaran dan pembelian token |
 | GET /api/pembayaran | Daftar pesanan token milik pengguna |
+| GET /api/pembayaran/config | Status gateway aktif (Midtrans atau simulasi) |
 | POST /api/pembayaran | Buat pesanan paket token |
 | GET /api/pembayaran/:kode | Rincian satu pesanan |
-| POST /api/pembayaran/:kode/bayar | Konfirmasi pembayaran simulasi dan tambah kuota |
+| POST /api/pembayaran/:kode/cek | Cek status pembayaran Midtrans dan tambah kuota |
+| POST /api/pembayaran/:kode/bayar | Konfirmasi pembayaran mode simulasi |
+| POST /api/pembayaran/midtrans/notifikasi | Terima notifikasi pembayaran Midtrans |
 | GET /health (Flask) | Status layanan AI, model aktif, dan status Gemini |
 | POST /predict (Flask) | Analisis foto: penyakit dan tingkat keyakinan |
 
@@ -235,10 +277,11 @@ halaman yang tidak tampil juga tidak bisa dipakai untuk mengubah data peran lain
 - Token scan bisa didapat dengan menukar kode dari agen atau membeli paket
   langsung di halaman token. Kode demo `LHS-DEMO-3` dan `LHS-DEMO-10` dicetak di
   konsol backend saat pertama kali dijalankan.
-- Pembelian token memakai **gateway simulasi**. Halaman pembayaran menampilkan
-  harga paket, biaya layanan, total, metode, dan status pesanan. Tombol konfirmasi
-  meniru callback gateway; setelah itu kuota ditambahkan otomatis dan transaksi
-  tercatat. Tidak ada uang yang ditarik dan tidak ada data kartu yang diminta.
+- Pembelian token memakai **Midtrans Snap**. Halaman pembayaran menampilkan
+  harga paket, biaya layanan, total, gateway, dan status pesanan. Setelah
+  pembayaran diverifikasi, kuota ditambahkan otomatis dan transaksi tercatat.
+  Tanpa Server Key Midtrans, aplikasi memakai gateway simulasi yang ditandai
+  jelas dan tidak meminta data kartu. Sandbox Midtrans juga bukan uang nyata.
 - Dokter bisa mengatur hari dan jam praktik di halaman profil. Jadwal tampil di
   daftar dokter pada halaman konsultasi dan di percakapan yang sudah diambil.
 - Konsultasi yang sudah ditutup masuk ke riwayat jawaban dokter. Rekap aktivitas

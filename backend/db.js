@@ -75,6 +75,9 @@ db.exec(`
     biaya       INTEGER NOT NULL DEFAULT 0,
     total       INTEGER NOT NULL,
     metode      TEXT    NOT NULL,
+    gateway     TEXT    NOT NULL DEFAULT 'simulasi',
+    gateway_token TEXT,
+    redirect_url TEXT,
     status      TEXT    NOT NULL DEFAULT 'menunggu',
     created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
     dibayar_at  TEXT
@@ -130,6 +133,9 @@ tambahKolom('riwayat', 'pendapat_kedua', 'TEXT');
 tambahKolom('riwayat', 'kode_sertifikat', 'TEXT');
 tambahKolom('laporan_wabah', 'lat', 'REAL');
 tambahKolom('laporan_wabah', 'lng', 'REAL');
+tambahKolom('pesanan', 'gateway', "TEXT NOT NULL DEFAULT 'simulasi'");
+tambahKolom('pesanan', 'gateway_token', 'TEXT');
+tambahKolom('pesanan', 'redirect_url', 'TEXT');
 tambahKolom('dokter', 'jadwal_hari', 'TEXT');
 tambahKolom('dokter', 'jadwal_jam', 'TEXT');
 tambahKolom('users', 'token_version', 'INTEGER NOT NULL DEFAULT 0');
