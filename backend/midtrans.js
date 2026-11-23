@@ -30,11 +30,11 @@ function konfigurasi() {
   if (!serverKey) return null;
 
   const clientKey = process.env.MIDTRANS_CLIENT_KEY || berkas.MIDTRANS_CLIENT_KEY || '';
-  const modeMentah = process.env.MIDTRANS_MODE || berkas.MIDTRANS_MODE
-    || (serverKey.startsWith('SB-') ? 'sandbox' : 'production');
+  const signatureKey = process.env.MIDTRANS_SIGNATURE_KEY || berkas.MIDTRANS_SIGNATURE_KEY || serverKey;
+  const modeMentah = process.env.MIDTRANS_MODE || berkas.MIDTRANS_MODE || 'sandbox';
   const mode = String(modeMentah).toLowerCase() === 'production' ? 'production' : 'sandbox';
 
-  return { serverKey, clientKey, mode, sandbox: mode !== 'production' };
+  return { serverKey, clientKey, signatureKey, mode, sandbox: mode !== 'production' };
 }
 
 function aktif() {
@@ -128,7 +128,7 @@ async function statusTransaksi(konf, kode) {
 }
 
 function tandaTanganValid(konf, data) {
-  const bahan = `${data.order_id || ''}${data.status_code || ''}${data.gross_amount || ''}${konf.serverKey}`;
+  const bahan = `${data.order_id || ''}${data.status_code || ''}${data.gross_amount || ''}${konf.signatureKey}`;
   const harap = crypto.createHash('sha512').update(bahan).digest('hex');
   const diterima = String(data.signature_key || '');
   if (!/^[a-f0-9]{128}$/i.test(diterima)) return false;

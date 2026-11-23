@@ -132,14 +132,26 @@ Cara mengaktifkan:
 1. Daftar akun di `https://dashboard.midtrans.com/register` (gratis untuk
    Sandbox). Lengkapi data toko dengan nama aplikasi, lalu pilih lingkungan
    **Sandbox**.
-2. Buka **Settings → Access Keys**, salin **Server Key** dan **Client Key**.
+2. Buka **Settings → Access Keys**. Di dashboard Midtrans terbaru ada tiga
+   kredensial:
+   - **Signature Secret Key** untuk memverifikasi notifikasi pembayaran.
+   - **Client Key** untuk jendela Snap.js.
+   - **Server Key** untuk memanggil API Midtrans. Klik **Generate server key**,
+     beri izin **Snap Checkout: Write** dan **Core API: Read**, pilih
+     **No expiry**, lalu salin key yang muncul. Server Key hanya ditampilkan
+     sekali.
 3. Buat berkas `backend/data/.midtrans` berisi:
 
    ```
-   MIDTRANS_SERVER_KEY=SB-Mid-server-...
-   MIDTRANS_CLIENT_KEY=SB-Mid-client-...
+   MIDTRANS_SERVER_KEY=Mid-server-...
+   MIDTRANS_CLIENT_KEY=Mid-client-...
+   MIDTRANS_SIGNATURE_KEY=Mid-server-...
    MIDTRANS_MODE=sandbox
    ```
+
+   Baris `MIDTRANS_SIGNATURE_KEY` diisi **Signature Secret Key**, bukan Server
+   Key hasil generate. Kalau key lama masih dipakai dan Signature Secret Key
+   sama dengan Server Key, baris itu boleh dikosongkan.
 
 4. Jalankan ulang `python main.py`. Di halaman token, catatan gateway berubah
    menjadi Midtrans Sandbox dan tombol beli membuka jendela pembayaran Midtrans.
@@ -148,7 +160,8 @@ Cara mengaktifkan:
 Kredensial tidak boleh di-commit; folder `backend/data/` sudah diabaikan Git.
 Lingkungan Sandbox memakai alat uji Midtrans, jadi tidak ada uang sungguhan yang
 dipotong. Untuk uang nyata, akun harus disetujui Midtrans, key produksi dipakai,
-dan `MIDTRANS_MODE` diubah menjadi `production`.
+dan `MIDTRANS_MODE` diubah menjadi `production`. Tanpa `MIDTRANS_MODE`, aplikasi
+memakai Sandbox supaya key produksi tidak terpakai tanpa sengaja.
 
 Notifikasi pembayaran (webhook) bisa diarahkan ke
 `<alamat-publik>/api/pembayaran/midtrans/notifikasi`. Untuk pengembangan lokal,
