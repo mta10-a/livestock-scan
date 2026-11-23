@@ -217,6 +217,19 @@
         return;
       }
 
+      if (p.gateway !== 'midtrans' && konfGateway.gateway === 'midtrans') {
+        el('konten').innerHTML = `
+          <h2 class="judul">Pesanan lama tidak bisa dibayar</h2>
+          <p class="subjudul" style="margin-bottom:16px">Pembayaran simulasi sudah dinonaktifkan karena Midtrans aktif.</p>
+          ${rincian(p)}
+          <div class="catatan hati" style="margin-top:16px">
+            <span>Buat pesanan baru dari halaman token supaya pembayaran diproses lewat Midtrans.</span>
+          </div>
+          <a class="tombol" href="token.html" style="margin-top:16px">Kembali ke token</a>`;
+        pasangIkon();
+        return;
+      }
+
       if (p.gateway === 'midtrans') {
         tampilkanMidtrans(p);
         return;

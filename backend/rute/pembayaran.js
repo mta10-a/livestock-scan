@@ -227,8 +227,8 @@ module.exports = (app, { auth, bodyJson, paket, biayaLayanan }) => {
     if (!baris || Number(baris.user_id) !== Number(req.userId)) {
       return res.status(404).json({ error: 'Pesanan tidak ditemukan.' });
     }
-    if (baris.gateway === 'midtrans') {
-      return res.status(409).json({ error: 'Pesanan Midtrans diverifikasi lewat cek status, bukan tombol simulasi.' });
+    if (baris.gateway === 'midtrans' || midtrans.konfigurasi()) {
+      return res.status(409).json({ error: 'Pembayaran simulasi tidak tersedia saat Midtrans aktif.' });
     }
     if (baris.status !== 'menunggu') {
       return res.status(409).json({ error: 'Pesanan ini sudah diproses.' });
