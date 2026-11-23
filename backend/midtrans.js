@@ -116,9 +116,12 @@ async function statusTransaksi(konf, kode) {
     signal: AbortSignal.timeout(20000),
   });
   const data = await res.json().catch(() => ({}));
+  const kodeStatus = String(data.status_code || '');
 
-  if (res.status === 404) return { status: 'tidak_ditemukan', data };
-  if (!res.ok) throw new Error(`Midtrans: ${data.status_message || `HTTP ${res.status}`}`);
+  if (res.status === 404 || kodeStatus === '404') return { status: 'tidak_ditemukan', data };
+  if (!res.ok || kodeStatus === '401' || kodeStatus === '403') {
+    throw new Error(`Midtrans: ${data.status_message || `HTTP ${res.status}`}`);
+  }
 
   return {
     status: String(data.transaction_status || ''),
