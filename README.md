@@ -30,13 +30,13 @@ aplikasinya di browser. Nomor port dan batas pemakaian diatur di `config.py`.
 
 ## Progres fitur
 
-Terpakai **40 dari 40** kebutuhan fungsional (100%). RF-28 sudah memakai
-integrasi **Midtrans Snap** untuk QRIS, transfer VA, dan e-wallet. Selama Server
-Key Midtrans belum diisi, aplikasi otomatis memakai mode simulasi agar alur tetap
-bisa dicoba tanpa kredensial. Setelah key dimasukkan, halaman pembayaran
-mengarah ke Midtrans Sandbox dan kuota bertambah setelah status pembayaran
-diverifikasi. Hitungan ketat tetap 39 RF (**97,5%**) sampai key Midtrans aktif
-dan transaksi sandbox benar-benar dicoba.
+Terpakai **40 dari 40** kebutuhan fungsional (**100%**), termasuk RF-28.
+Pembelian token memakai **Midtrans Snap** di lingkungan Sandbox: QRIS, transfer
+VA, dan e-wallet tampil di halaman Midtrans, biaya layanan dihitung, status
+pembayaran dicek ke Midtrans, lalu kuota ditambahkan otomatis. Pembuatan
+transaksi Sandbox sudah diuji berhasil. Kalau Server Key belum diisi, aplikasi
+memakai mode simulasi agar alur tetap bisa dicoba. Untuk uang nyata, akun dan
+key Production tetap harus disiapkan dan disetujui Midtrans.
 
 | Kode | Fitur |
 |---|---|
