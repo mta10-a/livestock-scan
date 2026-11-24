@@ -38,6 +38,9 @@ transaksi Sandbox sudah diuji berhasil. Kalau Server Key belum diisi, aplikasi
 memakai mode simulasi agar alur tetap bisa dicoba. Untuk uang nyata, akun dan
 key Production tetap harus disiapkan dan disetujui Midtrans.
 
+Angka 100% di sini berarti kelengkapan fitur, bukan akurasi model AI. Akurasi
+model dijelaskan di bagian Model AI.
+
 | Kode | Fitur |
 |---|---|
 | RF-01 | Registrasi akun |
